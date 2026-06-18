@@ -1,0 +1,2058 @@
+{
+  "name": "WF2 — Обработка ответов",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const event = $input.first().json;\n\nreturn [{\n  json: {\n    pachca_user_id: event.user_id,\n    answer_data: event.data,\n    message_id: event.message_id,\n    chat_id: event.chat_id,\n    event_type: event.type\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2048,
+        224
+      ],
+      "id": "43b1bc76-5c3b-446c-b7d5-d7298f3214ba",
+      "name": "Парсинг вебхука"
+    },
+    {
+      "parameters": {
+        "jsCode": "const question = $('Текущий вопрос (ответ)').first().json;\nconst session = JSON.parse($('GET сессия (ответ)').first().json.propertyName);\nconst webhookData = $('Парсинг вебхука').first().json;\n\nconst answers = JSON.parse(session.answers || '{}');\nconst questionIds = session.question_ids.split(',').map(id => id.trim());\nconst currentQuestionId = questionIds[Number(session.current_question_index)];\nanswers[currentQuestionId] = webhookData.answer_data;\n\nconst answerMap = {\n  'A': question.вариант_A,\n  'B': question.вариант_B,\n  'C': question.вариант_C,\n  'D': question.вариант_D\n};\n\nconst isCorrect = webhookData.answer_data === question.правильный_ответ;\nconst earnedScore = isCorrect ? (Number(question.вес_баллов) || 1) : 0;\nconst newIndex = Number(session.current_question_index) + 1;\nconst isLastQuestion = newIndex >= Number(session.total_questions) ? 'true' : 'false';\nconst totalScore = Number(session.total_score || 0) + earnedScore;\nconst maxScore = Number(session.max_score || 0) + (Number(question.вес_баллов) || 1);\n\nreturn [{ json: {\n  session_id: session.session_id,\n  employee_id: session.employee_id,\n  ФИО: session.ФИО,\n  pachca_user_id: session.pachca_user_id,\n  цикл: session.цикл,\n  номер_теста: session.номер_теста,\n  номер_попытки: session.номер_попытки,\n  целевая_аудитория: session.целевая_аудитория,\n  question_ids: session.question_ids,\n  questions_data: session.questions_data,\n  current_question_index: newIndex,\n  total_questions: Number(session.total_questions),\n  correct_answer: answerMap[question.правильный_ответ] || question.правильный_ответ,\n  question_weight: Number(question.вес_баллов) || 1,\n  answers: JSON.stringify(answers),\n  is_last_question: isLastQuestion,\n  total_score: totalScore,\n  max_score: maxScore,\n  current_question_id: currentQuestionId,\n  question_text: question.текст_вопроса,\n  answer_data: answerMap[webhookData.answer_data] || webhookData.answer_data,\n  is_correct: isCorrect,\n  reminder_count: session.reminder_count ?? 0\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        240
+      ],
+      "id": "acba9580-e74d-4162-8295-31d034b4bee3",
+      "name": "Фиксация ответа"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9dd03d79-6e2f-4712-9ada-94884d126710",
+              "leftValue": "={{ $('Фиксация ответа').first().json.is_last_question }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1152,
+        240
+      ],
+      "id": "0630c056-1ca7-454f-af6f-460c992cf825",
+      "name": "Последний вопрос?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fixation = $('Фиксация ответа').first().json;\nconst answers = JSON.parse(fixation.answers || '{}');\nconst questionIds = fixation.question_ids.split(',').map(id => id.trim());\nconst sessionForReminder = JSON.parse($('GET сессия (ответ)').first().json.propertyName);\n\nconst totalScore = Number(fixation.total_score || 0);\nconst maxScore = Number(fixation.max_score || questionIds.length);\nconst scorePercent = Math.round((totalScore / maxScore) * 100);\nconst status = scorePercent >= 1 ? 'пройден' : 'не пройден';\n\nreturn [{\n  json: {\n    session_id: fixation.session_id,\n    employee_id: fixation.employee_id,\n    ФИО: fixation.ФИО,\n    pachca_user_id: fixation.pachca_user_id,\n    цикл: fixation.цикл,\n    номер_теста: fixation.номер_теста,\n    номер_попытки: fixation.номер_попытки,\n    целевая_аудитория: fixation.целевая_аудитория,\n    score: scorePercent,\n    статус: status,\n    answers: fixation.answers,\n    question_ids: fixation.question_ids,\n    total_score: fixation.total_score,\n    max_score: maxScore,\n    reminder_count: sessionForReminder.reminder_count ?? 0\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        176
+      ],
+      "id": "62a103c3-f6d1-4751-bdea-e7d54f1f8593",
+      "name": "Итог теста"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1czMIqlFs5QtRN08EJ-DeWMxCGrwXPoAFh5kpKaZcIzA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Активные сессии",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "статус": "завершён",
+            "session_id": "={{ $('Итог теста').first().json.session_id }}",
+            "total_score": "={{ $('Итог теста').first().json.total_score }}",
+            "max_score": "={{ $('Итог теста').first().json.max_score }}",
+            "answers": "={{ $('Итог теста').first().json.answers }}",
+            "sent_at": "={{new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}}"
+          },
+          "matchingColumns": [
+            "session_id"
+          ],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "employee_id",
+              "displayName": "employee_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "pachca_user_id",
+              "displayName": "pachca_user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ФИО",
+              "displayName": "ФИО",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "целевая_аудитория",
+              "displayName": "целевая_аудитория",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "цикл",
+              "displayName": "цикл",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "номер_теста",
+              "displayName": "номер_теста",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "номер_попытки",
+              "displayName": "номер_попытки",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "question_ids",
+              "displayName": "question_ids",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "total_questions",
+              "displayName": "total_questions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "answers",
+              "displayName": "answers",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sent_at",
+              "displayName": "sent_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "reminder_count",
+              "displayName": "reminder_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "total_score",
+              "displayName": "total_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "max_score",
+              "displayName": "max_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "статус",
+              "displayName": "статус",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1664,
+        176
+      ],
+      "id": "9bb68672-ec6f-467e-82e7-124b541aeb2d",
+      "name": "Закрытие сессии",
+      "credentials": {
+        "googleApi": {
+          "id": "CLtUZrMeBHsJ9IND",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "14w82dGBM2JAeYFGcb8lP8i7uHM4BCm7LAf5jLfds15k",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Итоги тестов",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "result_id": "={{ $('Итог теста').first().json.session_id }}",
+            "employee_id": "={{ $('Итог теста').first().json.employee_id }}",
+            "цикл": "={{ $('Итог теста').first().json.цикл }}",
+            "дата_прохождения": "={{new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow'})}}",
+            "балл": "={{ $('Итог теста').first().json.score }}",
+            "статус": "={{ $('Итог теста').first().json.статус }}",
+            "ФИО": "={{ $('Итог теста').first().json.ФИО }}",
+            "целевая_аудитория": "={{ $('Итог теста').first().json.целевая_аудитория }}",
+            "номер_теста": "={{ $('Итог теста').first().json.номер_теста }}",
+            "номер_попытки": "={{ $('Итог теста').first().json.номер_попытки }}",
+            "напоминаний_потребовалось": "={{ $('Итог теста').first().json.reminder_count ?? 0 }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "result_id",
+              "displayName": "result_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "employee_id",
+              "displayName": "employee_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ФИО",
+              "displayName": "ФИО",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "целевая_аудитория",
+              "displayName": "целевая_аудитория",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "цикл",
+              "displayName": "цикл",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "номер_теста",
+              "displayName": "номер_теста",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "дата_прохождения",
+              "displayName": "дата_прохождения",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "балл",
+              "displayName": "балл",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "статус",
+              "displayName": "статус",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "напоминаний_потребовалось",
+              "displayName": "напоминаний_потребовалось",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "номер_попытки",
+              "displayName": "номер_попытки",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1824,
+        176
+      ],
+      "id": "14dbe2d3-5d01-40ce-b2a3-e03a265e03bf",
+      "name": "Запись результата",
+      "credentials": {
+        "googleApi": {
+          "id": "CLtUZrMeBHsJ9IND",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $('Итог теста').first().json;\nconst session = JSON.parse($('GET сессия (ответ)').first().json.propertyName);\nconst questionsData = JSON.parse(session.questions_data);\nconst answers = JSON.parse(result.answers || '{}');\nconst questionIds = result.question_ids.split(',').map(id => id.trim());\n\nconst mistakes = questionIds\n  .filter(qid => {\n    const userAnswer = answers[qid];\n    const correct = questionsData[qid]?.правильный_ответ;\n    return userAnswer !== correct;\n  })\n  .map(qid => {\n    const q = questionsData[qid];\n    const link = q.инструкция_БЗ ? `\\n📖 ${q.инструкция_БЗ}` : '';\n    return `❌ ${q.текст_вопроса}${link}`;\n  });\n\nconst filled = Math.round(result.score / 10);\nconst empty = 10 - filled;\nconst progressBar = '🟦'.repeat(filled) + '⬜'.repeat(empty);\nconst scoreEmoji = result.score >= 80 ? '🟢' : result.score >= 70 ? '🟡' : '🔴';\n\nlet content = `────────────────\\n✅ **Тест завершён!**\\n\\n${progressBar} ${scoreEmoji} **${result.score}%**`;\n\nif (mistakes.length > 0) {\n  const mistakesList = mistakes.join('\\n\\n');\n  content += `\\n\\n────────────────\\n📋 **Что изучить:**\\n\\n${mistakesList}`;\n} else {\n  content += `\\n\\n────────────────\\n🎉 Все ответы верные!`;\n}\n\nconst body = {\n  message: {\n    entity_type: 'user',\n    entity_id: Number(result.pachca_user_id),\n    content: content\n  }\n};\n\nawait this.helpers.httpRequest({\n  method: 'POST',\n  url: 'https://api.pachca.com/api/shared/v1/messages',\n  headers: {\n    'Authorization': 'Bearer ' + $env.PACHCA_TOKEN + '',\n    'Content-Type': 'application/json'\n  },\n  body: body\n});\n\nreturn [{ json: { done: true } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2016,
+        176
+      ],
+      "id": "148bb645-572a-4c2a-9552-bf6822db82f4",
+      "name": "Итоговое сообщение"
+    },
+    {
+      "parameters": {
+        "jsCode": "const question = $input.first().json;\nconst questionNumber = Number(question.current_question_index) + 1;\nconst total = question.total_questions;\n\nconst buttons = [\n  [{ text: `${question.вариант_A}`, data: 'A' }],\n  [{ text: `${question.вариант_B}`, data: 'B' }],\n  [{ text: `${question.вариант_C}`, data: 'C' }],\n  [{ text: `${question.вариант_D}`, data: 'D' }]\n];\n\nlet response;\ntry {\n  response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.pachca.com/api/shared/v1/messages',\n    headers: {\n      'Authorization': 'Bearer ' + $env.PACHCA_TOKEN + '',\n      'Content-Type': 'application/json'\n    },\n    body: {\n      message: {\n        entity_type: 'user',\n        entity_id: Number(question.pachca_user_id),\n        content: `📋 Вопрос ${questionNumber} из ${total}\\n\\n${question.текст_вопроса}\\n\\nВыбери один вариант ответа:`,\n        buttons: buttons\n      }\n    }\n  });\n} catch(e) {\n  return [{ json: { error: e.message } }];\n}\n\nreturn [{ json: { done: true, last_message_id: response.data.id, session_id: question.session_id } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1536,
+        368
+      ],
+      "id": "658bd3d3-34f9-4838-8b75-53778ab4b928",
+      "name": "Отправка следующего вопроса"
+    },
+    {
+      "parameters": {
+        "jsCode": "const question = $('Текущий вопрос (старт)').first().json;\nconst questionNumber = Number(question.current_question_index) + 1;\nconst total = question.total_questions;\n\nconst buttons = [\n  [{ text: `${question.вариант_A}`, data: 'A' }],\n  [{ text: `${question.вариант_B}`, data: 'B' }],\n  [{ text: `${question.вариант_C}`, data: 'C' }],\n  [{ text: `${question.вариант_D}`, data: 'D' }]\n];\n\nlet response;\ntry {\n  response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.pachca.com/api/shared/v1/messages',\n    headers: {\n      'Authorization': 'Bearer ' + $env.PACHCA_TOKEN + '',\n      'Content-Type': 'application/json'\n    },\n    body: {\n      message: {\n        entity_type: 'user',\n        entity_id: Number(question.pachca_user_id),\n        content: `📋 Вопрос ${questionNumber} из ${total}\\n\\n${question.текст_вопроса}\\n\\nВыбери один вариант ответа:`,\n        buttons: buttons\n      }\n    }\n  });\n} catch(e) {\n  return [{ json: { error: e.message } }];\n}\n\nreturn [{ json: { done: true, last_message_id: response.data.id } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        656,
+        64
+      ],
+      "id": "aef97caa-de2b-406b-b483-195bf7b9acdc",
+      "name": "Отправка вопроса"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "14w82dGBM2JAeYFGcb8lP8i7uHM4BCm7LAf5jLfds15k",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1322285887,
+          "mode": "list",
+          "cachedResultName": "Детализация ответов",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14w82dGBM2JAeYFGcb8lP8i7uHM4BCm7LAf5jLfds15k/edit#gid=1322285887"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "result_id": "={{ $json.session_id }}_{{ $json.current_question_id }}",
+            "employee_id": "={{ $json.employee_id }}",
+            "цикл": "={{ $json.цикл }}",
+            "номер_теста": "={{ $json.номер_теста }}",
+            "question_id": "={{ $json.current_question_id }}",
+            "текст_вопроса": "={{ $json.question_text }}",
+            "ответ_сотрудника": "={{ $json.answer_data }}",
+            "правильный_ответ": "={{ $json.correct_answer }}",
+            "верно": "={{ $json.is_correct }}",
+            "баллы_за_вопрос": "={{ $json.question_weight }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "result_id",
+              "displayName": "result_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "employee_id",
+              "displayName": "employee_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "цикл",
+              "displayName": "цикл",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "номер_теста",
+              "displayName": "номер_теста",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "question_id",
+              "displayName": "question_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "текст_вопроса",
+              "displayName": "текст_вопроса",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ответ_сотрудника",
+              "displayName": "ответ_сотрудника",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "правильный_ответ",
+              "displayName": "правильный_ответ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "верно",
+              "displayName": "верно",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "баллы_за_вопрос",
+              "displayName": "баллы_за_вопрос",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        496,
+        240
+      ],
+      "id": "72a42c3f-9a33-4285-91e4-f3e63d44d63f",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleApi": {
+          "id": "CLtUZrMeBHsJ9IND",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const fixation = $('Фиксация ответа').first().json;\nconst questionsData = JSON.parse(fixation.questions_data);\nconst nextQuestionId = fixation.question_ids.split(',').map(id => id.trim())[fixation.current_question_index];\nconst question = questionsData[nextQuestionId];\n\nreturn [{\n  json: {\n    ...question,\n    session_id: fixation.session_id,\n    employee_id: fixation.employee_id,\n    pachca_user_id: fixation.pachca_user_id,\n    question_ids: fixation.question_ids,\n    questions_data: fixation.questions_data,\n    current_question_index: fixation.current_question_index,\n    total_questions: fixation.total_questions,\n    answers: fixation.answers,\n    current_question_id: nextQuestionId\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        368
+      ],
+      "id": "211a60ad-ce23-433b-8545-3a2f83a4d3c3",
+      "name": "Следующий вопрос из Redis"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ $('Фиксация ответа').first().json.session_id }}",
+        "value": "={{ JSON.stringify($('Фиксация ответа').first().json) }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        720,
+        240
+      ],
+      "id": "03b93b74-a4a8-4b34-8bac-9ef7ca6e144b",
+      "name": "Кэширование ответа в Redis",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ $('Итог теста').first().json.session_id }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        2192,
+        176
+      ],
+      "id": "aaefce83-5959-44a9-b5ac-ab50fbff8bc7",
+      "name": "Очистка Redis",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ 'clicks_' + $('Итог теста').first().json.pachca_user_id }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        2368,
+        176
+      ],
+      "id": "f965b07e-3b6f-44cb-8269-d4b1511a5685",
+      "name": "Очистка счетчика Redis",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1czMIqlFs5QtRN08EJ-DeWMxCGrwXPoAFh5kpKaZcIzA"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 667327829,
+          "mode": "list",
+          "cachedResultName": "Активные сессии",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1czMIqlFs5QtRN08EJ-DeWMxCGrwXPoAFh5kpKaZcIzA/edit#gid=667327829"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('Текущий вопрос (старт)').first().json.session_id }}",
+            "статус": "в процессе"
+          },
+          "matchingColumns": [
+            "session_id"
+          ],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "employee_id",
+              "displayName": "employee_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "pachca_user_id",
+              "displayName": "pachca_user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ФИО",
+              "displayName": "ФИО",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "целевая_аудитория",
+              "displayName": "целевая_аудитория",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "цикл",
+              "displayName": "цикл",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "номер_теста",
+              "displayName": "номер_теста",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "номер_попытки",
+              "displayName": "номер_попытки",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "question_ids",
+              "displayName": "question_ids",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total_questions",
+              "displayName": "total_questions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "current_question_index",
+              "displayName": "current_question_index",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "answers",
+              "displayName": "answers",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sent_at",
+              "displayName": "sent_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reminder_count",
+              "displayName": "reminder_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total_score",
+              "displayName": "total_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "max_score",
+              "displayName": "max_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "статус",
+              "displayName": "статус",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -80,
+        64
+      ],
+      "id": "baeecfd6-61a1-482f-b5b9-c4b12d32a684",
+      "name": "Sheets: статус в процессе",
+      "credentials": {
+        "googleApi": {
+          "id": "CLtUZrMeBHsJ9IND",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ 'user_' + $('Итог теста').first().json.pachca_user_id }}",
+        "value": "={{ 'завершён:' + $('Итог теста').first().json.session_id }}",
+        "keyType": "string"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        2736,
+        176
+      ],
+      "id": "5f660ad3-cff9-445b-98f5-daa20cd04d7a",
+      "name": "Очистка Redis: user→session",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "event": "button_pressed"
+      },
+      "type": "n8n-nodes-pachca.pachcaTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2208,
+        224
+      ],
+      "id": "0596dcd5-9a7d-4382-ab5d-c4c31c051a25",
+      "name": "Pachca Trigger",
+      "webhookId": "5c86133f-90d1-4bea-9c9e-50756003242d",
+      "credentials": {
+        "pachcaApi": {
+          "id": "ri0e87moQEiru5eW",
+          "name": "Pachca account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ 'processing_' + String($('Парсинг вебхука').first().json.message_id) }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        928,
+        240
+      ],
+      "id": "6ab13eb6-a3e4-488d-af2d-91c37317c72d",
+      "name": "Redis: clear processing",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ 'processing_' + String($('Парсинг вебхука').first().json.message_id) }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1232,
+        -192
+      ],
+      "id": "4fa7891b-a36f-4c40-be34-7acd8be4ddff",
+      "name": "Redis DELETE processing",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ 'processing_' + String($('Парсинг вебхука').first().json.message_id) }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        2560,
+        176
+      ],
+      "id": "095613dc-930c-49f9-a898-e8bc24a9c0d9",
+      "name": "Redis DELETE final",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ $('Текущий вопрос (старт)').first().json.session_id }}",
+        "value": "={{ JSON.stringify({ ...JSON.parse($('GET сессия (старт)').first().json.propertyName), статус: 'в процессе' }) }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        288,
+        64
+      ],
+      "id": "b9890228-32af-48dc-b61b-395f71902bbb",
+      "name": "Redis: статус в процессе",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "split-start",
+              "leftValue": "={{ $json.answer_data }}",
+              "rightValue": "start",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1856,
+        224
+      ],
+      "id": "3a20bf95-0afe-4a91-a606-42daa1d7e191",
+      "name": "Старт или ответ?"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "={{ 'user_' + String($('Парсинг вебхука').first().json.pachca_user_id) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -1632,
+        80
+      ],
+      "id": "d0fc785d-9834-4209-830b-39b0898c8669",
+      "name": "get session_id (старт)",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "={{ $('get session_id (старт)').first().json.propertyName }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -1408,
+        80
+      ],
+      "id": "f1c7942b-2f5d-4041-9fa8-f201387b954a",
+      "name": "GET сессия (старт)",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhookData = $('Парсинг вебхука').first().json;\nconst token = 'Bearer ' + $env.PACHCA_TOKEN + '';\nconst sessionIdRaw = $('get session_id (старт)').first().json.propertyName ?? '';\n\n// 1. Тест завершён\nif (sessionIdRaw.startsWith('завершён:')) {\n  try {\n    await this.helpers.httpRequest({\n      method: 'PATCH',\n      url: `https://api.pachca.com/api/shared/v1/messages/${webhookData.message_id}`,\n      headers: { 'Authorization': token, 'Content-Type': 'application/json' },\n      body: { message: { content: '✅ Тест уже пройден', buttons: [] } }\n    });\n  } catch(e) {}\n  return [];\n}\n\n// 2. Нет сессии\nif (!sessionIdRaw) return [];\n\nconst sessionRaw = ($('GET сессия (старт)').first().json.propertyName ?? '').replace(/^=/, '');\nif (!sessionRaw) return [];\nconst session = JSON.parse(sessionRaw);\n\n// 3. Тест уже идёт — проверяем ДО last_message_id\nif (session.статус === 'в процессе') {\n  try {\n    await this.helpers.httpRequest({\n      method: 'PATCH',\n      url: `https://api.pachca.com/api/shared/v1/messages/${webhookData.message_id}`,\n      headers: { 'Authorization': token, 'Content-Type': 'application/json' },\n      body: { message: { content: '📋 Ты уже проходишь тест — ответь на текущий вопрос.', buttons: [] } }\n    });\n  } catch(e) {}\n  return [];\n}\n\n// 4. Устаревшая кнопка\nif (session.last_message_id && String(session.last_message_id) !== String(webhookData.message_id)) {\n  try {\n    await this.helpers.httpRequest({\n      method: 'PATCH',\n      url: `https://api.pachca.com/api/shared/v1/messages/${webhookData.message_id}`,\n      headers: { 'Authorization': token, 'Content-Type': 'application/json' },\n      body: { message: { content: '⚠️ Используй актуальную кнопку ниже.', buttons: [] } }\n    });\n  } catch(e) {}\n  return [];\n}\n\nreturn [{ json: webhookData }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        80
+      ],
+      "id": "bc15e7ec-2cf4-4030-81c8-485185715598",
+      "name": "Проверка старта"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ 'processing_' + String($('Парсинг вебхука').first().json.message_id) }}",
+        "value": "1",
+        "keyType": "string",
+        "expire": true,
+        "ttl": 30
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -976,
+        80
+      ],
+      "id": "d7b247bc-15dc-4ada-a53d-e75250e0b84b",
+      "name": "set processing (старт)",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhookData = $('Парсинг вебхука').first().json;\ntry {\n  await this.helpers.httpRequest({\n    method: 'PATCH',\n    url: `https://api.pachca.com/api/shared/v1/messages/${webhookData.message_id}`,\n    headers: { 'Authorization': 'Bearer ' + $env.PACHCA_TOKEN + '', 'Content-Type': 'application/json' },\n    body: { message: { content: '🚀 Запуск...', buttons: [] } }\n  });\n} catch(e) {}\nreturn [{ json: webhookData }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        80
+      ],
+      "id": "997ac8ba-dac9-4135-a9aa-200388d79f14",
+      "name": "Визуальный отклик (старт)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const session = JSON.parse($('GET сессия (старт)').first().json.propertyName);\nconst questionIds = session.question_ids.split(',').map(id => id.trim());\nconst currentIndex = Number(session.current_question_index);\nconst currentQuestionId = questionIds[currentIndex];\nconst questionsData = JSON.parse(session.questions_data);\nconst question = questionsData[currentQuestionId];\n\nreturn [{ json: {\n  ...question,\n  session_id: session.session_id,\n  employee_id: session.employee_id,\n  ФИО: session.ФИО,\n  pachca_user_id: session.pachca_user_id,\n  цикл: session.цикл,\n  номер_теста: session.номер_теста,\n  номер_попытки: session.номер_попытки,\n  целевая_аудитория: session.целевая_аудитория,\n  question_ids: session.question_ids,\n  questions_data: session.questions_data,\n  current_question_index: currentIndex,\n  total_questions: session.total_questions,\n  current_question_id: currentQuestionId,\n  answers: session.answers,\n  total_score: session.total_score,\n  max_score: session.max_score,\n  статус: session.статус\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        80
+      ],
+      "id": "429ca83b-3095-49d2-99c7-4ffe729cff5b",
+      "name": "Текущий вопрос (старт)"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "={{ $('Текущий вопрос (старт)').first().json.session_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        896,
+        -192
+      ],
+      "id": "7d58f3aa-6e17-4dea-877b-a8a9e35bf796",
+      "name": "Redis: get сессию после старта",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ $('Текущий вопрос (старт)').first().json.session_id }}",
+        "value": "={{ JSON.stringify({ ...JSON.parse($('Redis: get сессию после старта').first().json.propertyName), last_message_id: $('Отправка вопроса').first().json.last_message_id }) }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1072,
+        -192
+      ],
+      "id": "8bcef668-9c30-4452-82f6-12ba386d47fc",
+      "name": "Redis: set last_msg после старта",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "={{ 'processing_' + String($('Парсинг вебхука').first().json.message_id) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -1632,
+        384
+      ],
+      "id": "3a9ae43e-dc1a-40de-a29e-bf031969c5d1",
+      "name": "get processing (ответ)",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const processing = $('get processing (ответ)').first().json.propertyName ?? '';\nif (processing === '1') return [];\nreturn [{ json: $('Парсинг вебхука').first().json }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1408,
+        384
+      ],
+      "id": "a63d85b6-9f11-443b-98a6-4e4d9b780542",
+      "name": "Дубль ответа?"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ 'processing_' + String($('Парсинг вебхука').first().json.message_id) }}",
+        "value": "1",
+        "keyType": "string",
+        "expire": true,
+        "ttl": 30
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        384
+      ],
+      "id": "85a77d40-8f24-42f3-8e60-99133317078d",
+      "name": "set processing (ответ)",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "={{ 'user_' + String($('Парсинг вебхука').first().json.pachca_user_id) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -976,
+        384
+      ],
+      "id": "7387383c-c08b-4d05-9b09-cce0201f786c",
+      "name": "get session_id (ответ)",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "={{ $('get session_id (ответ)').first().json.propertyName }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -752,
+        384
+      ],
+      "id": "80e1ed43-ad04-4bd9-bc6a-5df807ae11bf",
+      "name": "GET сессия (ответ)",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhookData = $('Парсинг вебхука').first().json;\nconst token = 'Bearer ' + $env.PACHCA_TOKEN + '';\nconst sessionIdRaw = $('get session_id (ответ)').first().json.propertyName ?? '';\n\nif (sessionIdRaw.startsWith('завершён:')) {\n  try {\n    await this.helpers.httpRequest({\n      method: 'PATCH',\n      url: `https://api.pachca.com/api/shared/v1/messages/${webhookData.message_id}`,\n      headers: { 'Authorization': token, 'Content-Type': 'application/json' },\n      body: { message: { content: '🔒 Тест был принудительно завершён.', buttons: [] } }\n    });\n  } catch(e) {}\n  return [];\n}\n\nreturn [{ json: webhookData }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        384
+      ],
+      "id": "46d7ac74-1f2d-4739-a2d3-dc4d6925a059",
+      "name": "Тест закрыт?"
+    },
+    {
+      "parameters": {
+        "operation": "incr",
+        "key": "={{ 'clicks_' + $('Парсинг вебхука').first().json.pachca_user_id }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        384
+      ],
+      "id": "1ae12859-6763-4a78-bef8-b4c067dbc131",
+      "name": "Redis (счётчик)",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhookData = $('Парсинг вебхука').first().json;\nconst clickCount = Number($('Redis (счётчик)').first().json['clicks_' + $('Парсинг вебхука').first().json.pachca_user_id]);\ntry {\n  await this.helpers.httpRequest({\n    method: 'PATCH',\n    url: `https://api.pachca.com/api/shared/v1/messages/${webhookData.message_id}`,\n    headers: { 'Authorization': 'Bearer ' + $env.PACHCA_TOKEN + '', 'Content-Type': 'application/json' },\n    body: { message: { content: `📝 Ответ принят · вопрос ${clickCount} из 10`, buttons: [] } }\n  });\n} catch(e) {}\nreturn [{ json: webhookData }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        384
+      ],
+      "id": "d382d317-06fc-4032-acd7-969effa59cc4",
+      "name": "Визуальный отклик (ответ)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const sessionRaw = $('GET сессия (ответ)').first().json.propertyName.replace(/^=/, '');\nconst session = JSON.parse(sessionRaw);\nconst questionIds = session.question_ids.split(',').map(id => id.trim());\nconst currentIndex = Number(session.current_question_index);\nconst currentQuestionId = questionIds[currentIndex];\nconst questionsData = JSON.parse(session.questions_data);\nconst question = questionsData[currentQuestionId];\n\nreturn [{ json: {\n  ...question,\n  session_id: session.session_id,\n  employee_id: session.employee_id,\n  ФИО: session.ФИО,\n  pachca_user_id: session.pachca_user_id,\n  цикл: session.цикл,\n  номер_теста: session.номер_теста,\n  номер_попытки: session.номер_попытки,\n  целевая_аудитория: session.целевая_аудитория,\n  question_ids: session.question_ids,\n  questions_data: session.questions_data,\n  current_question_index: currentIndex,\n  total_questions: session.total_questions,\n  current_question_id: currentQuestionId,\n  answers: session.answers,\n  total_score: session.total_score,\n  max_score: session.max_score,\n  статус: session.статус\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        384
+      ],
+      "id": "9fc90f3f-b776-4cb0-b74f-e55554344fa4",
+      "name": "Текущий вопрос (ответ)"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "={{ $('Следующий вопрос из Redis').first().json.session_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        384
+      ],
+      "id": "6c4cca91-3bd4-445e-aa69-039c8fd6491e",
+      "name": "Redis: get сессию след вопрос",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ $('Следующий вопрос из Redis').first().json.session_id }}",
+        "value": "={{ JSON.stringify({ ...JSON.parse($('Redis: get сессию след вопрос').first().json.propertyName), last_message_id: $('Отправка следующего вопроса').first().json.last_message_id }) }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1952,
+        384
+      ],
+      "id": "bf233f31-7393-4f77-af28-2614e70d6439",
+      "name": "Redis: set last_msg след вопрос",
+      "credentials": {
+        "redis": {
+          "id": "BCdcUQuZTVYaTRLM",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "00c04b25-9546-4920-88a7-19545995ca3a",
+              "leftValue": "={{ $('Итог теста').first().json.номер_попытки }}",
+              "rightValue": "2",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2912,
+        176
+      ],
+      "id": "d8ea0b0f-4df4-4ad1-9864-ea04fc7dd797",
+      "name": "Вторая попытка?"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1czMIqlFs5QtRN08EJ-DeWMxCGrwXPoAFh5kpKaZcIzA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1236820163,
+          "mode": "list",
+          "cachedResultName": "Вторые попытки",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1czMIqlFs5QtRN08EJ-DeWMxCGrwXPoAFh5kpKaZcIzA/edit#gid=1236820163"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('Итог теста').first().json.session_id }}",
+            "статус": "завершена"
+          },
+          "matchingColumns": [
+            "session_id"
+          ],
+          "schema": [
+            {
+              "id": "attempt_id",
+              "displayName": "attempt_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "employee_id",
+              "displayName": "employee_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "цикл",
+              "displayName": "цикл",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "номер_теста",
+              "displayName": "номер_теста",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "статус",
+              "displayName": "статус",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "дата_открытия",
+              "displayName": "дата_открытия",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3120,
+        80
+      ],
+      "id": "c2ba6195-4f05-4d4e-b564-c5c5f43fa17d",
+      "name": "Обновление Вторые попытки (завершение)",
+      "credentials": {
+        "googleApi": {
+          "id": "CLtUZrMeBHsJ9IND",
+          "name": "Google Service Account account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Парсинг вебхука": {
+      "main": [
+        [
+          {
+            "node": "Старт или ответ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Фиксация ответа": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Последний вопрос?": {
+      "main": [
+        [
+          {
+            "node": "Итог теста",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Следующий вопрос из Redis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Итог теста": {
+      "main": [
+        [
+          {
+            "node": "Закрытие сессии",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Закрытие сессии": {
+      "main": [
+        [
+          {
+            "node": "Запись результата",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Запись результата": {
+      "main": [
+        [
+          {
+            "node": "Итоговое сообщение",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Кэширование ответа в Redis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Следующий вопрос из Redis": {
+      "main": [
+        [
+          {
+            "node": "Отправка следующего вопроса",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Кэширование ответа в Redis": {
+      "main": [
+        [
+          {
+            "node": "Redis: clear processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Очистка Redis": {
+      "main": [
+        [
+          {
+            "node": "Очистка счетчика Redis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Итоговое сообщение": {
+      "main": [
+        [
+          {
+            "node": "Очистка Redis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: статус в процессе": {
+      "main": [
+        [
+          {
+            "node": "Redis: статус в процессе",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Очистка счетчика Redis": {
+      "main": [
+        [
+          {
+            "node": "Redis DELETE final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pachca Trigger": {
+      "main": [
+        [
+          {
+            "node": "Парсинг вебхука",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis: clear processing": {
+      "main": [
+        [
+          {
+            "node": "Последний вопрос?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Отправка вопроса": {
+      "main": [
+        [
+          {
+            "node": "Redis: get сессию после старта",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis DELETE final": {
+      "main": [
+        [
+          {
+            "node": "Очистка Redis: user→session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis: статус в процессе": {
+      "main": [
+        [
+          {
+            "node": "Отправка вопроса",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Старт или ответ?": {
+      "main": [
+        [
+          {
+            "node": "get session_id (старт)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "get processing (ответ)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get session_id (старт)": {
+      "main": [
+        [
+          {
+            "node": "GET сессия (старт)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET сессия (старт)": {
+      "main": [
+        [
+          {
+            "node": "Проверка старта",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Проверка старта": {
+      "main": [
+        [
+          {
+            "node": "set processing (старт)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set processing (старт)": {
+      "main": [
+        [
+          {
+            "node": "Визуальный отклик (старт)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Визуальный отклик (старт)": {
+      "main": [
+        [
+          {
+            "node": "Текущий вопрос (старт)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Текущий вопрос (старт)": {
+      "main": [
+        [
+          {
+            "node": "Sheets: статус в процессе",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis: get сессию после старта": {
+      "main": [
+        [
+          {
+            "node": "Redis: set last_msg после старта",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis: set last_msg после старта": {
+      "main": [
+        [
+          {
+            "node": "Redis DELETE processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get processing (ответ)": {
+      "main": [
+        [
+          {
+            "node": "Дубль ответа?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Дубль ответа?": {
+      "main": [
+        [
+          {
+            "node": "set processing (ответ)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set processing (ответ)": {
+      "main": [
+        [
+          {
+            "node": "get session_id (ответ)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get session_id (ответ)": {
+      "main": [
+        [
+          {
+            "node": "GET сессия (ответ)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET сессия (ответ)": {
+      "main": [
+        [
+          {
+            "node": "Тест закрыт?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Тест закрыт?": {
+      "main": [
+        [
+          {
+            "node": "Redis (счётчик)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis (счётчик)": {
+      "main": [
+        [
+          {
+            "node": "Визуальный отклик (ответ)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Визуальный отклик (ответ)": {
+      "main": [
+        [
+          {
+            "node": "Текущий вопрос (ответ)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Текущий вопрос (ответ)": {
+      "main": [
+        [
+          {
+            "node": "Фиксация ответа",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Отправка следующего вопроса": {
+      "main": [
+        [
+          {
+            "node": "Redis: get сессию след вопрос",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis: get сессию след вопрос": {
+      "main": [
+        [
+          {
+            "node": "Redis: set last_msg след вопрос",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Очистка Redis: user→session": {
+      "main": [
+        [
+          {
+            "node": "Вторая попытка?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Вторая попытка?": {
+      "main": [
+        [
+          {
+            "node": "Обновление Вторые попытки (завершение)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "2afef077-464c-493c-95c5-cbaa1f69a4a8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4c63e90e523310677ea46f9435057f02f020287d0be29c922e7e3dadd6f51b0b"
+  },
+  "id": "vnBNEz203bhVCdDt",
+  "tags": []
+}

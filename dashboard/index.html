@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TutorDog — Аналитика срезов знаний</title>
+<style>
+  :root {
+    --blue: #0068FF; --blue-dark: #114495; --blue-light: #E8F0FF;
+    --bg: #F5F5F5; --surface: #FFFFFF; --text: #1E1E1E; --text-muted: #6B7280;
+    --border: #E5E7EB; --green: #27AE60; --green-bg: #EAFAF1;
+    --yellow: #F39C12; --yellow-bg: #FEF9E7; --red: #E74C3C; --red-bg: #FDEDEC;
+    --radius: 12px; --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Montserrat', -apple-system, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+  .header { background: var(--blue-dark); color: white; padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .header-logo { font-weight: 700; font-size: 16px; }
+  .header-logo span { color: #7BB3FF; }
+  .last-updated { font-size: 12px; color: rgba(255,255,255,0.5); }
+  .refresh-btn { background: rgba(255,255,255,0.12); border: none; color: white; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: inherit; margin-left: 12px; }
+  .refresh-btn:hover { background: rgba(255,255,255,0.2); }
+  .nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; overflow-x: auto; }
+  .nav-tab { padding: 14px 18px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-muted); border-bottom: 2px solid transparent; transition: all 0.15s; white-space: nowrap; }
+  .nav-tab:hover { color: var(--blue); }
+  .nav-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+  .content { padding: 24px; max-width: 1280px; margin: 0 auto; }
+  .view { display: none; }
+  .view.active { display: block; }
+  .filters { background: var(--surface); border-radius: var(--radius); padding: 16px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; box-shadow: var(--shadow); }
+  .filters label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .filters select { border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; font-size: 13px; font-family: inherit; color: var(--text); background: var(--bg); cursor: pointer; min-width: 150px; }
+  .filters select:focus { outline: none; border-color: var(--blue); }
+  .export-btn { margin-left: auto; background: var(--blue); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-family: inherit; cursor: pointer; font-weight: 600; white-space: nowrap; }
+  .export-btn:hover { background: var(--blue-dark); }
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .metric-card { background: var(--surface); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+  .metric-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
+  .metric-value { font-size: 32px; font-weight: 700; line-height: 1; color: var(--blue); }
+  .metric-value.green { color: var(--green); }
+  .metric-value.yellow { color: var(--yellow); }
+  .metric-value.red { color: var(--red); }
+  .metric-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .table-card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 20px; }
+  .table-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .table-title { font-size: 14px; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: var(--blue-dark); color: white; padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--blue-light); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .badge-green { background: var(--green-bg); color: var(--green); }
+  .badge-yellow { background: var(--yellow-bg); color: var(--yellow); }
+  .badge-red { background: var(--red-bg); color: var(--red); }
+  .badge-blue { background: var(--blue-light); color: var(--blue); }
+  .badge-gray { background: #F3F4F6; color: #6B7280; }
+  .progress-bar { background: var(--border); border-radius: 4px; height: 6px; overflow: hidden; margin-top: 6px; }
+  .progress-fill { height: 100%; border-radius: 4px; background: var(--blue); }
+  .progress-fill.green { background: var(--green); }
+  .progress-fill.yellow { background: var(--yellow); }
+  .progress-fill.red { background: var(--red); }
+  .funnel { padding: 20px; }
+  .funnel-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .funnel-label { width: 100px; font-size: 12px; color: var(--text-muted); font-weight: 600; flex-shrink: 0; }
+  .funnel-bar-wrap { flex: 1; background: var(--border); border-radius: 4px; height: 28px; overflow: hidden; }
+  .funnel-bar { height: 100%; display: flex; align-items: center; padding-left: 10px; border-radius: 4px; font-size: 12px; font-weight: 700; color: white; transition: width 0.4s; }
+  .funnel-pct { width: 48px; text-align: right; font-size: 12px; font-weight: 600; color: var(--text-muted); flex-shrink: 0; }
+  .question-block { background: var(--surface); border-radius: var(--radius); padding: 20px; margin-bottom: 12px; box-shadow: var(--shadow); }
+  .question-block.problem { border-left: 4px solid var(--red); background: var(--red-bg); }
+  .question-block.ok { border-left: 4px solid var(--green); }
+  .question-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .question-label.problem { color: var(--red); }
+  .question-text { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+  .answer-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .answer-text { flex: 1; font-size: 13px; }
+  .answer-text.correct { color: var(--green); font-weight: 700; }
+  .answer-pct { width: 40px; text-align: right; font-size: 12px; font-weight: 700; color: var(--text-muted); }
+  .answer-bar-wrap { width: 200px; background: var(--border); border-radius: 3px; height: 20px; overflow: hidden; flex-shrink: 0; }
+  .answer-bar { height: 100%; border-radius: 3px; background: #CBD5E1; }
+  .answer-bar.correct { background: var(--green); }
+  .answer-bar.wrong-popular { background: var(--red); }
+  .bz-toggle { display: inline-block; margin-top: 10px; font-size: 12px; color: var(--blue); cursor: pointer; text-decoration: none; background: none; border: none; font-family: inherit; padding: 0; }
+  .bz-toggle:hover { text-decoration: underline; }
+  .bz-text { display: none; margin-top: 8px; font-size: 12px; color: var(--text); background: var(--blue-light); padding: 10px 14px; border-radius: 8px; line-height: 1.6; }
+  .bz-text.open { display: block; }
+  .inner-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 20px; background: var(--surface); border-radius: var(--radius) var(--radius) 0 0; overflow: hidden; }
+  .inner-tab { padding: 12px 20px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-muted); border-bottom: 2px solid transparent; transition: all 0.15s; }
+  .inner-tab:hover { color: var(--blue); }
+  .inner-tab.active { color: var(--blue); border-bottom-color: var(--blue); background: var(--blue-light); }
+  .inner-view { display: none; }
+  .inner-view.active { display: block; }
+  /* Прогресс по циклу */
+  .cycle-summary { background: var(--surface); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow); }
+  .cycle-summary-title { font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .cycle-progress-bar { background: var(--border); border-radius: 8px; height: 24px; overflow: hidden; position: relative; }
+  .cycle-progress-fill { height: 100%; background: var(--blue); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700; transition: width 0.5s; }
+  .cycle-progress-label { margin-top: 8px; font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; }
+  .progress-table { overflow-x: auto; }
+  .score-cell { text-align: center; font-weight: 700; font-size: 13px; padding: 10px 8px; min-width: 80px; }
+  .score-cell.sc-green { color: var(--green); }
+  .score-cell.sc-yellow { color: var(--yellow); }
+  .score-cell.sc-red { color: var(--red); }
+  .score-cell.sc-auto { color: var(--red); font-size: 16px; cursor: help; }
+  .score-cell.sc-empty { color: #CBD5E1; }
+  .tooltip-box { position: fixed; background: #1E1E1E; color: white; padding: 10px 14px; border-radius: 8px; font-size: 12px; line-height: 1.5; max-width: 280px; z-index: 9999; pointer-events: none; display: none; }
+  .loading { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .back-btn { display: inline-flex; align-items: center; gap: 6px; background: none; border: 1px solid var(--border); padding: 7px 14px; border-radius: 8px; font-size: 13px; font-family: inherit; cursor: pointer; color: var(--text-muted); margin-bottom: 16px; transition: all 0.15s; }
+  .back-btn:hover { border-color: var(--blue); color: var(--blue); }
+  .empty { text-align: center; padding: 40px; color: var(--text-muted); font-size: 13px; }
+  .clickable { cursor: pointer; }
+  .link-text { color: var(--blue); font-weight: 600; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  @media (max-width: 768px) { .content { padding: 16px; } .metrics-grid { grid-template-columns: repeat(2, 1fr); } .two-col { grid-template-columns: 1fr; } }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="tooltip-box" id="tooltip"></div>
+
+<div class="header">
+  <div class="header-logo">Tutor<span>Dog</span> · Аналитика</div>
+  <div style="display:flex;align-items:center">
+    <span class="last-updated" id="lastUpdated">—</span>
+    <button class="refresh-btn" onclick="loadData()">↻ Обновить</button>
+  </div>
+</div>
+
+<div class="nav">
+  <div class="nav-tab active" onclick="switchTab('overview')">Общий обзор</div>
+  <div class="nav-tab" onclick="switchTab('employees')">По сотрудникам</div>
+  <div class="nav-tab" onclick="switchTab('tests')">По тестам</div>
+  <div class="nav-tab" onclick="switchTab('progress')">Прогресс по циклу</div>
+</div>
+
+<div class="content">
+
+  <div class="view active" id="view-overview">
+    <div class="filters">
+      <label>Цикл</label><select id="f-cycle-ov" onchange="renderOverview()"><option value="">Все циклы</option></select>
+      <label>Аудитория</label><select id="f-aud-ov" onchange="renderOverview()"><option value="">Все</option></select>
+      <label>Руководитель</label><select id="f-mgr-ov" onchange="renderOverview()"><option value="">Все</option></select>
+      <button class="export-btn" onclick="exportOverview()">↓ Excel</button>
+    </div>
+    <div id="overview-content"><div class="loading"><div class="spinner"></div>Загрузка...</div></div>
+  </div>
+
+  <div class="view" id="view-employees">
+    <div id="emp-list-wrap">
+      <div class="filters">
+        <label>Цикл</label><select id="f-cycle-emp" onchange="renderEmpList()"><option value="">Все циклы</option></select>
+        <label>Тест №</label><select id="f-test-emp" onchange="renderEmpList()"><option value="">Все тесты</option></select>
+        <label>Аудитория</label><select id="f-aud-emp" onchange="renderEmpList()"><option value="">Все</option></select>
+        <label>Руководитель</label><select id="f-mgr-emp" onchange="renderEmpList()"><option value="">Все</option></select>
+        <button class="export-btn" onclick="exportEmpList()">↓ Excel</button>
+      </div>
+      <div id="emp-list-content"><div class="loading"><div class="spinner"></div>Загрузка...</div></div>
+    </div>
+    <div id="emp-detail-wrap" style="display:none">
+      <button class="back-btn" onclick="showEmpList()">← Назад к списку</button>
+      <div id="emp-detail-content"></div>
+    </div>
+  </div>
+
+  <div class="view" id="view-tests">
+    <div id="test-list-wrap">
+      <div class="filters">
+        <label>Цикл</label><select id="f-cycle-tests" onchange="renderTestList()"><option value="">Все циклы</option></select>
+        <label>Аудитория</label><select id="f-aud-tests" onchange="renderTestList()"><option value="">Все</option></select>
+        <button class="export-btn" onclick="exportTestList()">↓ Excel</button>
+      </div>
+      <div id="test-list-content"><div class="loading"><div class="spinner"></div>Загрузка...</div></div>
+    </div>
+    <div id="test-detail-wrap" style="display:none">
+      <button class="back-btn" onclick="showTestList()">← Назад к списку</button>
+      <div id="test-detail-content"></div>
+    </div>
+  </div>
+
+  <div class="view" id="view-progress">
+    <div class="filters">
+      <label>Цикл</label><select id="f-cycle-prog" onchange="renderProgress()"><option value="">Выберите цикл</option></select>
+      <label>Аудитория</label><select id="f-aud-prog" onchange="renderProgress()"><option value="">Все</option></select>
+      <label>Руководитель</label><select id="f-mgr-prog" onchange="renderProgress()"><option value="">Все</option></select>
+      <button class="export-btn" onclick="exportProgress()">↓ Excel</button>
+    </div>
+    <div id="progress-content"><div class="empty">Выберите цикл для отображения прогресса</div></div>
+  </div>
+
+</div>
+
+<script>
+const TOTAL_TESTS = 6; // Всегда 6 тестов в цикле
+
+const XLSX_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+let xlsxLoaded = false;
+function loadXLSX(cb) {
+  if(xlsxLoaded){cb();return;}
+  const s=document.createElement('script'); s.src=XLSX_CDN; s.onload=()=>{xlsxLoaded=true;cb();}; document.head.appendChild(s);
+}
+function exportToExcel(rows,headers,filename) {
+  loadXLSX(()=>{ const ws=XLSX.utils.aoa_to_sheet([headers,...rows]); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Данные'); XLSX.writeFile(wb,filename+'.xlsx'); });
+}
+
+let DATA = {employees:[],sessions:[],results:[],details:[],questions_bank:[]};
+
+// Тултип
+const TT = document.getElementById('tooltip');
+function showTip(e,t){TT.textContent=t;TT.style.display='block';moveTip(e);}
+function moveTip(e){let x=e.clientX+12,y=e.clientY+12;if(x+300>window.innerWidth)x=e.clientX-300;if(y+80>window.innerHeight)y=e.clientY-60;TT.style.left=x+'px';TT.style.top=y+'px';}
+function hideTip(){TT.style.display='none';}
+document.addEventListener('mousemove',e=>{if(TT.style.display==='block')moveTip(e);});
+
+// Загрузка
+async function loadData() {
+  document.getElementById('lastUpdated').textContent='Загрузка...';
+  try {
+    const res=await fetch('/api/data'); DATA=await res.json();
+    const now=new Date().toLocaleString('ru-RU',{timeZone:'Europe/Moscow',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    document.getElementById('lastUpdated').textContent='Обновлено: '+now;
+    populateFilters(); renderCurrentView();
+  } catch(e){document.getElementById('lastUpdated').textContent='Ошибка загрузки';}
+}
+
+function populateFilters() {
+  const cycles=[...new Set(DATA.results.map(r=>r['цикл']).filter(Boolean))].sort().reverse();
+  const auds=[...new Set(DATA.employees.map(e=>e['целевая_аудитория']).filter(Boolean))].sort();
+  const mgrs=[...new Set(DATA.employees.map(e=>e['никнейм_руководителя']).filter(Boolean))].sort();
+  const tests=[...new Set(DATA.results.map(r=>r['номер_теста']).filter(Boolean))].sort((a,b)=>Number(a)-Number(b));
+  const fill=(id,items,ph)=>{const el=document.getElementById(id);if(!el)return;const v=el.value;el.innerHTML=`<option value="">${ph}</option>`+items.map(i=>`<option value="${i}">${i}</option>`).join('');if(v)el.value=v;};
+  fill('f-cycle-ov',cycles,'Все циклы');fill('f-aud-ov',auds,'Все аудитории');fill('f-mgr-ov',mgrs,'Все руководители');
+  fill('f-cycle-emp',cycles,'Все циклы');fill('f-test-emp',tests,'Все тесты');fill('f-aud-emp',auds,'Все аудитории');fill('f-mgr-emp',mgrs,'Все руководители');
+  fill('f-cycle-tests',cycles,'Все циклы');fill('f-aud-tests',auds,'Все аудитории');
+  fill('f-cycle-prog',cycles,'Выберите цикл');fill('f-aud-prog',auds,'Все аудитории');fill('f-mgr-prog',mgrs,'Все руководители');
+}
+
+let currentTab='overview';
+function switchTab(tab) {
+  currentTab=tab;
+  document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('active',['overview','employees','tests','progress'][i]===tab));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+tab).classList.add('active');
+  renderCurrentView();
+}
+function renderCurrentView(){if(currentTab==='overview')renderOverview();else if(currentTab==='employees')renderEmpList();else if(currentTab==='tests')renderTestList();else if(currentTab==='progress')renderProgress();}
+
+// Хелперы
+const scC=s=>Number(s)>=80?'green':Number(s)>=60?'yellow':'red';
+const sBadge=s=>`<span class="badge badge-${scC(s)}">${Number(s)}%</span>`;
+const stBadge=st=>{const m={'пройден':'green','завершён':'green','не пройден':'red','назначен':'blue','в процессе':'yellow'};return `<span class="badge badge-${m[st]||'gray'}">${st}</span>`;};
+function filterResults(cycle,aud,mgr){let ids=null;if(aud||mgr)ids=new Set(DATA.employees.filter(e=>(!aud||e['целевая_аудитория']===aud)&&(!mgr||e['никнейм_руководителя']===mgr)).map(e=>e['employee_id']));return DATA.results.filter(r=>(!cycle||r['цикл']===cycle)&&(!ids||ids.has(r['employee_id'])));}
+function cognitiveComplexity(results){const a=new Set(results.map(r=>r['employee_id'])).size;if(!a)return'—';const fa={};results.forEach(r=>{const e=r['employee_id'],n=Number(r['номер_попытки']);if(!fa[e]||n<fa[e].n)fa[e]={n,s:Number(r['балл'])};});return(Object.values(fa).filter(x=>x.s>=80).length/a).toFixed(2);}
+function isAutoClosed(resultId){return!DATA.details.some(d=>String(d['result_id']).startsWith(resultId+'_Q'));}
+function toggleBZ(id){const el=document.getElementById('bz-'+id);if(el)el.classList.toggle('open');}
+
+// Строим блок ответов с правильным сравнением через String()
+function buildAnswerBars(q, prob) {
+  const wrongPop = Object.entries(q.answers).filter(([a])=>String(a)!==String(q.correct)).sort((a,b)=>b[1]-a[1])[0]?.[0];
+  return Object.entries(q.answers).sort((a,b)=>b[1]-a[1]).map(([ans,cnt])=>{
+    const pct=Math.round(cnt/q.total*100);
+    const isc=String(ans)===String(q.correct); // Строгое строковое сравнение
+    const isWP=!isc&&ans===wrongPop&&prob;
+    return `<div class="answer-row">
+      <div class="answer-text ${isc?'correct':''}">${ans}${isc?' ✓':''}</div>
+      <div class="answer-bar-wrap"><div class="answer-bar ${isc?'correct':isWP?'wrong-popular':''}" style="width:${pct}%"></div></div>
+      <div class="answer-pct">${pct}%</div>
+    </div>`;
+  }).join('');
+}
+
+// Строим блок БЗ (ссылка или инлайн-текст)
+let bzCounter=0;
+function buildBZ(qInfo) {
+  if(!qInfo||!qInfo['инструкция_БЗ']) return '';
+  const val=qInfo['инструкция_БЗ'];
+  if(val.startsWith('http')||val.startsWith('//')) return `<a class="bz-toggle" href="${val}" target="_blank">📖 Изучить тему →</a>`;
+  const bid='bz'+(bzCounter++);
+  return `<button class="bz-toggle" onclick="toggleBZ('${bid}')">📖 Изучить тему ↓</button><div class="bz-text" id="bz-${bid}">${val}</div>`;
+}
+
+// ===== ОБЩИЙ ОБЗОР =====
+function renderOverview(){
+  const cycle=document.getElementById('f-cycle-ov').value;
+  const aud=document.getElementById('f-aud-ov').value;
+  const mgr=document.getElementById('f-mgr-ov').value;
+  const results=filterResults(cycle,aud,mgr);
+  const uniqueEmps=new Set(results.map(r=>r['employee_id'])).size;
+  const bpe={};results.forEach(r=>{const k=`${r['employee_id']}|${r['цикл']}|${r['номер_теста']}`;if(!bpe[k]||Number(r['балл'])>Number(bpe[k]['балл']))bpe[k]=r;});
+  const ur=Object.values(bpe),scores=ur.map(r=>Number(r['балл'])).filter(s=>!isNaN(s));
+  const avg=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):0;
+  const succ=scores.length?Math.round(scores.filter(s=>s>=80).length/scores.length*100):0;
+  const failed=ur.filter(r=>r['статус']==='не пройден').length;
+  const passed=ur.filter(r=>r['статус']==='пройден').length;
+  let sess=DATA.sessions;
+  if(cycle)sess=sess.filter(s=>s['цикл']===cycle);
+  if(aud)sess=sess.filter(s=>s['целевая_аудитория']===aud);
+  if(mgr){const ids=new Set(DATA.employees.filter(e=>e['никнейм_руководителя']===mgr).map(e=>e['employee_id']));sess=sess.filter(s=>ids.has(s['employee_id']));}
+  const totalAssigned=sess.length,notStarted=sess.filter(s=>s['статус']==='назначен').length,inProg=sess.filter(s=>s['статус']==='в процессе').length,done=sess.filter(s=>s['статус']==='завершён').length;
+  const byTest={};results.forEach(r=>{const k=`${r['цикл']}|${r['номер_теста']}|${r['целевая_аудитория']}`;if(!byTest[k])byTest[k]={цикл:r['цикл'],номер:r['номер_теста'],ауд:r['целевая_аудитория'],res:[]};byTest[k].res.push(r);});
+  const testRows=Object.values(byTest).sort((a,b)=>b.цикл.localeCompare(a.цикл)||a.номер-b.номер).map(t=>{
+    const b={};t.res.forEach(r=>{const e=r['employee_id'];if(!b[e]||Number(r['балл'])>Number(b[e]['балл']))b[e]=r;});
+    const u=Object.values(b),sc2=u.map(r=>Number(r['балл']));
+    const a=sc2.length?Math.round(sc2.reduce((x,y)=>x+y,0)/sc2.length):0;
+    const s=sc2.length?Math.round(sc2.filter(x=>x>=80).length/sc2.length*100):0;
+    const pU=u.filter(r=>r['статус']==='пройден').length;
+    return `<tr class="clickable" onclick="goToTest('${t.цикл}|${t.номер}|${t.ауд}')"><td><span class="link-text">${t.цикл} · Тест №${t.номер}</span></td><td>${t.ауд||'—'}</td><td>${u.length}</td><td>${pU} (${u.length?Math.round(pU/u.length*100):0}%)</td><td>${sBadge(a)}</td><td>${sBadge(s)}</td></tr>`;
+  }).join('');
+  const fmax=Math.max(totalAssigned,1);
+  const fb=(n,col,lbl)=>`<div class="funnel-row"><div class="funnel-label">${lbl}</div><div class="funnel-bar-wrap"><div class="funnel-bar" style="width:${Math.round(n/fmax*100)}%;background:${col}">${n>0?n:''}</div></div><div class="funnel-pct">${totalAssigned>0?Math.round(n/totalAssigned*100)+'%':'—'}</div></div>`;
+  document.getElementById('overview-content').innerHTML=`
+    <div class="metrics-grid">
+      <div class="metric-card"><div class="metric-label">Сотрудников участвовало</div><div class="metric-value">${uniqueEmps}</div><div class="metric-sub">уникальных</div></div>
+      <div class="metric-card"><div class="metric-label">Средний балл</div><div class="metric-value ${scC(avg)}">${avg}%</div><div class="progress-bar"><div class="progress-fill ${scC(avg)}" style="width:${avg}%"></div></div></div>
+      <div class="metric-card"><div class="metric-label">Успех ≥80%</div><div class="metric-value ${scC(succ)}">${succ}%</div><div class="metric-sub">${scores.filter(s=>s>=80).length} из ${ur.length}</div></div>
+      <div class="metric-card"><div class="metric-label">Не сдали</div><div class="metric-value ${failed>0?'red':'green'}">${failed}</div><div class="metric-sub">после всех попыток</div></div>
+    </div>
+    <div class="two-col">
+      <div class="table-card"><div class="table-header"><div class="table-title">Воронка прохождения</div></div><div class="funnel">
+        ${fb(totalAssigned,'#0068FF','Назначено')}${fb(inProg+done,'#114495','Начато')}${fb(done,'#27AE60','Завершено')}${fb(passed,'#1a7a45','Пройдено')}
+      </div></div>
+      <div class="table-card"><div class="table-header"><div class="table-title">Текущий статус</div></div><div style="padding:16px 20px">
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-muted);font-size:13px">Назначен, не начат</span><span class="badge badge-blue">${notStarted}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-muted);font-size:13px">В процессе</span><span class="badge badge-yellow">${inProg}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0"><span style="color:var(--text-muted);font-size:13px">Завершён</span><span class="badge badge-green">${done}</span></div>
+      </div></div>
+    </div>
+    <div class="table-card"><div class="table-header"><div class="table-title">Статистика по тестам · нажмите для перехода</div></div>
+      <table><thead><tr><th>Тест</th><th>Аудитория</th><th>Назначено</th><th>Пройдено</th><th>Ср. балл</th><th>Успех ≥80%</th></tr></thead>
+      <tbody>${testRows||'<tr><td colspan="6" class="empty">Нет данных</td></tr>'}</tbody></table></div>`;
+}
+function goToTest(key){switchTab('tests');setTimeout(()=>showTestDetail(key),50);}
+function exportOverview(){
+  const results=filterResults(document.getElementById('f-cycle-ov').value,document.getElementById('f-aud-ov').value,document.getElementById('f-mgr-ov').value);
+  const bpe={};results.forEach(r=>{const k=`${r['employee_id']}|${r['цикл']}|${r['номер_теста']}`;if(!bpe[k]||Number(r['балл'])>Number(bpe[k]['балл']))bpe[k]=r;});
+  exportToExcel(Object.values(bpe).map(r=>[r['цикл'],r['номер_теста'],r['целевая_аудитория'],r['ФИО'],r['балл'],r['статус'],r['номер_попытки'],r['дата_прохождения']]),['Цикл','Тест №','Аудитория','ФИО','Балл','Статус','Попытка','Дата'],'obzor');
+}
+
+// ===== ПО СОТРУДНИКАМ =====
+function renderEmpList(){
+  const cycle=document.getElementById('f-cycle-emp').value,testNum=document.getElementById('f-test-emp').value,aud=document.getElementById('f-aud-emp').value,mgr=document.getElementById('f-mgr-emp').value;
+  let emps=DATA.employees.filter(e=>e['активен']==='да');
+  if(aud)emps=emps.filter(e=>e['целевая_аудитория']===aud);
+  if(mgr)emps=emps.filter(e=>e['никнейм_руководителя']===mgr);
+  const rows=emps.map(e=>{
+    let er=DATA.results.filter(r=>r['employee_id']===e['employee_id']&&(!cycle||r['цикл']===cycle)&&(!testNum||String(r['номер_теста'])===String(testNum)));
+    const bpe={};er.forEach(r=>{const k=`${r['цикл']}|${r['номер_теста']}`;if(!bpe[k]||Number(r['балл'])>Number(bpe[k]['балл']))bpe[k]=r;});
+    const ut=Object.values(bpe),sc=ut.map(r=>Number(r['балл'])).filter(s=>!isNaN(s));
+    const avg=sc.length?Math.round(sc.reduce((a,b)=>a+b,0)/sc.length):null;
+    const passed=ut.filter(r=>r['статус']==='пройден').length;
+    const last=ut.sort((a,b)=>String(b['дата_прохождения']).localeCompare(String(a['дата_прохождения'])))[0];
+    return `<tr class="clickable" onclick="showEmpDetail('${e['employee_id']}')"><td><span class="link-text">${e['ФИО']}</span></td><td>${e['целевая_аудитория']||'—'}</td><td>${e['никнейм_руководителя']||'—'}</td><td>${passed} / ${ut.length}</td><td>${avg!==null?sBadge(avg):'—'}</td><td>${last?stBadge(last['статус']):'<span class="badge badge-gray">нет данных</span>'}</td></tr>`;
+  }).join('');
+  document.getElementById('emp-list-content').innerHTML=`<div class="table-card"><div class="table-header"><div class="table-title">Сотрудники (${emps.length})</div></div><table><thead><tr><th>ФИО</th><th>Аудитория</th><th>Руководитель</th><th>Пройдено тестов</th><th>Ср. балл</th><th>Последний статус</th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="empty">Нет данных</td></tr>'}</tbody></table></div>`;
+}
+function exportEmpList(){
+  const cycle=document.getElementById('f-cycle-emp').value,testNum=document.getElementById('f-test-emp').value,aud=document.getElementById('f-aud-emp').value,mgr=document.getElementById('f-mgr-emp').value;
+  let emps=DATA.employees.filter(e=>e['активен']==='да');
+  if(aud)emps=emps.filter(e=>e['целевая_аудитория']===aud);
+  if(mgr)emps=emps.filter(e=>e['никнейм_руководителя']===mgr);
+  const rows=emps.map(e=>{
+    let er=DATA.results.filter(r=>r['employee_id']===e['employee_id']&&(!cycle||r['цикл']===cycle)&&(!testNum||String(r['номер_теста'])===String(testNum)));
+    const bpe={};er.forEach(r=>{const k=`${r['цикл']}|${r['номер_теста']}`;if(!bpe[k]||Number(r['балл'])>Number(bpe[k]['балл']))bpe[k]=r;});
+    const ut=Object.values(bpe),sc=ut.map(r=>Number(r['балл'])).filter(s=>!isNaN(s));
+    return [e['ФИО'],e['целевая_аудитория'],e['никнейм_руководителя'],`${ut.filter(r=>r['статус']==='пройден').length}/${ut.length}`,sc.length?Math.round(sc.reduce((a,b)=>a+b,0)/sc.length)+'%':'—'];
+  });
+  exportToExcel(rows,['ФИО','Аудитория','Руководитель','Пройдено','Ср. балл'],'sotrudniki');
+}
+function showEmpDetail(empId){
+  const emp=DATA.employees.find(e=>e['employee_id']===empId);if(!emp)return;
+  const results=DATA.results.filter(r=>r['employee_id']===empId).sort((a,b)=>String(b['дата_прохождения']).localeCompare(String(a['дата_прохождения'])));
+  const sc=results.map(r=>Number(r['балл'])).filter(s=>!isNaN(s));
+  const avg=sc.length?Math.round(sc.reduce((a,b)=>a+b,0)/sc.length):0;
+  const fa=results.filter(r=>Number(r['номер_попытки'])===1);
+  const totalTests=new Set(results.map(r=>`${r['цикл']}|${r['номер_теста']}`)).size;
+  const passedFirst=fa.filter(r=>Number(r['балл'])>=80).length;
+  const succFirst=totalTests?Math.round(passedFirst/totalTests*100):0;
+  const histRows=results.map(r=>`<tr class="clickable" onclick="showEmpTestDetail('${empId}','${r['result_id']}','${r['цикл']}','${r['номер_теста']}','${r['номер_попытки']}')"><td><span class="link-text">${r['цикл']} · Тест №${r['номер_теста']}</span></td><td>${r['дата_прохождения']||'—'}</td><td>${sBadge(r['балл'])}</td><td>${stBadge(r['статус'])}</td><td>${r['номер_попытки']}/2</td><td>${r['напоминаний_потребовалось']||0}</td></tr>`).join('');
+  document.getElementById('emp-detail-content').innerHTML=`
+    <div class="metrics-grid" style="margin-bottom:20px">
+      <div class="metric-card"><div class="metric-label">Сотрудник</div><div style="font-size:16px;font-weight:700;margin-top:4px">${emp['ФИО']}</div><div class="metric-sub">${emp['целевая_аудитория']} · ${emp['никнейм_руководителя']}</div></div>
+      <div class="metric-card"><div class="metric-label">Тестов пройдено</div><div class="metric-value">${results.filter(r=>r['статус']==='пройден').length}</div><div class="metric-sub">из ${results.length} попыток</div></div>
+      <div class="metric-card"><div class="metric-label">Средний балл</div><div class="metric-value ${scC(avg)}">${avg}%</div></div>
+      <div class="metric-card"><div class="metric-label">Успех с 1й попытки</div><div class="metric-value ${scC(succFirst)}">${succFirst}%</div><div class="metric-sub">${passedFirst} из ${totalTests} тестов</div></div>
+    </div>
+    <div class="table-card"><div class="table-header"><div class="table-title">История тестов · нажмите на строку для детализации</div></div>
+      <table><thead><tr><th>Тест</th><th>Дата</th><th>Балл</th><th>Статус</th><th>Попытка</th><th>Напоминаний</th></tr></thead>
+      <tbody>${histRows||'<tr><td colspan="6" class="empty">Нет данных</td></tr>'}</tbody></table></div>
+    <div id="emp-test-detail"></div>`;
+  document.getElementById('emp-list-wrap').style.display='none';
+  document.getElementById('emp-detail-wrap').style.display='block';
+}
+function showEmpTestDetail(empId,resultId,cycle,testNum,attempt){
+  bzCounter=0;
+  const details=DATA.details.filter(d=>String(d['result_id']).startsWith(resultId+'_Q'));
+  const qBank={};DATA.questions_bank.forEach(q=>{qBank[q['question_id']]=q;});
+  const detRows=details.map(d=>{
+    const qInfo=qBank[d['question_id']];
+    const correct=d['верно']==='TRUE'||d['верно']===true||d['верно']==='1';
+    return `<tr><td style="max-width:280px">${d['текст_вопроса']||'—'}${buildBZ(qInfo)}</td><td>${d['ответ_сотрудника']||'—'}</td><td>${d['правильный_ответ']||'—'}</td><td style="text-align:center">${correct?'✅':'❌'}</td><td>${d['баллы_за_вопрос']||'—'}</td></tr>`;
+  }).join('');
+  document.getElementById('emp-test-detail').innerHTML=`<div class="table-card"><div class="table-header"><div class="table-title">Детализация · ${cycle} · Тест №${testNum} · Попытка ${attempt}</div></div><table><thead><tr><th>Вопрос</th><th>Ответ сотрудника</th><th>Правильный ответ</th><th>Верно</th><th>Баллы</th></tr></thead><tbody>${detRows||'<tr><td colspan="5" class="empty">Нет данных</td></tr>'}</tbody></table></div>`;
+  document.getElementById('emp-test-detail').scrollIntoView({behavior:'smooth'});
+}
+function showEmpList(){document.getElementById('emp-list-wrap').style.display='block';document.getElementById('emp-detail-wrap').style.display='none';}
+
+// ===== ПО ТЕСТАМ =====
+function renderTestList(){
+  const cycle=document.getElementById('f-cycle-tests').value,aud=document.getElementById('f-aud-tests').value;
+  const results=DATA.results.filter(r=>(!cycle||r['цикл']===cycle)&&(!aud||r['целевая_аудитория']===aud));
+  const byTest={};results.forEach(r=>{const k=`${r['цикл']}|${r['номер_теста']}|${r['целевая_аудитория']}`;if(!byTest[k])byTest[k]={цикл:r['цикл'],номер:r['номер_теста'],ауд:r['целевая_аудитория'],res:[]};byTest[k].res.push(r);});
+  const rows=Object.values(byTest).sort((a,b)=>b.цикл.localeCompare(a.цикл)||a.номер-b.номер).map(t=>{
+    const b={};t.res.forEach(r=>{const e=r['employee_id'];if(!b[e]||Number(r['балл'])>Number(b[e]['балл']))b[e]=r;});
+    const u=Object.values(b),sc2=u.map(r=>Number(r['балл']));
+    const a=sc2.length?Math.round(sc2.reduce((x,y)=>x+y,0)/sc2.length):0,s=sc2.length?Math.round(sc2.filter(x=>x>=80).length/sc2.length*100):0;
+    const pU=u.filter(r=>r['статус']==='пройден').length,ck=cognitiveComplexity(t.res);
+    const k=`${t.цикл}|${t.номер}|${t.ауд}`;
+    return `<tr class="clickable" onclick="showTestDetail('${k}')"><td><span class="link-text">${t.цикл} · Тест №${t.номер}</span></td><td>${t.ауд||'—'}</td><td>${u.length}</td><td>${pU}</td><td>${sBadge(a)}</td><td>${sBadge(s)}</td><td onmouseenter="showTip(event,'Доля сотрудников, сдавших тест на ≥80% с первой попытки. Высокое значение — хорошее усвоение или недостаточная сложность. Низкое — сложный контент или пробелы в знаниях. Анализируйте в связке с баллами и детализацией ответов.')" onmouseleave="hideTip()" style="cursor:help">${ck} <span style="color:#94a3b8;font-size:10px">ⓘ</span></td></tr>`;
+  }).join('');
+  document.getElementById('test-list-content').innerHTML=`<div class="table-card"><div class="table-header"><div class="table-title">Тесты</div></div><table><thead><tr><th>Тест</th><th>Аудитория</th><th>Назначено</th><th>Пройдено</th><th>Ср. балл</th><th>Успех ≥80%</th><th>Когн. сложность</th></tr></thead><tbody>${rows||'<tr><td colspan="7" class="empty">Нет данных</td></tr>'}</tbody></table></div>`;
+}
+function exportTestList(){
+  const cycle=document.getElementById('f-cycle-tests').value,aud=document.getElementById('f-aud-tests').value;
+  const results=DATA.results.filter(r=>(!cycle||r['цикл']===cycle)&&(!aud||r['целевая_аудитория']===aud));
+  const byTest={};results.forEach(r=>{const k=`${r['цикл']}|${r['номер_теста']}|${r['целевая_аудитория']}`;if(!byTest[k])byTest[k]={цикл:r['цикл'],номер:r['номер_теста'],ауд:r['целевая_аудитория'],res:[]};byTest[k].res.push(r);});
+  const rows=Object.values(byTest).sort((a,b)=>b.цикл.localeCompare(a.цикл)||a.номер-b.номер).map(t=>{
+    const b={};t.res.forEach(r=>{const e=r['employee_id'];if(!b[e]||Number(r['балл'])>Number(b[e]['балл']))b[e]=r;});
+    const u=Object.values(b),sc2=u.map(r=>Number(r['балл']));
+    const a=sc2.length?Math.round(sc2.reduce((x,y)=>x+y,0)/sc2.length):0,s=sc2.length?Math.round(sc2.filter(x=>x>=80).length/sc2.length*100):0;
+    return [t.цикл,t.номер,t.ауд,u.length,u.filter(r=>r['статус']==='пройден').length,a+'%',s+'%',cognitiveComplexity(t.res)];
+  });
+  exportToExcel(rows,['Цикл','Тест №','Аудитория','Назначено','Пройдено','Ср. балл','Успех ≥80%','Когн. сложность'],'testy');
+}
+function showTestDetail(key){
+  bzCounter=0;
+  const [цикл,номер,ауд]=key.split('|');
+  const results=DATA.results.filter(r=>r['цикл']===цикл&&String(r['номер_теста'])===String(номер)&&r['целевая_аудитория']===ауд);
+  const sc2=results.map(r=>Number(r['балл']));
+  const avg=sc2.length?Math.round(sc2.reduce((a,b)=>a+b,0)/sc2.length):0,succ=sc2.length?Math.round(sc2.filter(s=>s>=80).length/sc2.length*100):0,ck=cognitiveComplexity(results);
+  const empRows=results.map(r=>{const emp=DATA.employees.find(e=>e['employee_id']===r['employee_id']);return `<tr><td>${r['ФИО']||emp?.['ФИО']||r['employee_id']}</td><td>${emp?.['никнейм_руководителя']||'—'}</td><td>${sBadge(r['балл'])}</td><td>${stBadge(r['статус'])}</td><td>${r['номер_попытки']}/2</td><td>${r['напоминаний_потребовалось']||0}</td><td>${r['дата_прохождения']||'—'}</td></tr>`;}).join('');
+  const details=DATA.details.filter(d=>String(d['цикл'])===цикл&&String(d['номер_теста'])===String(номер));
+  const qBank={};DATA.questions_bank.forEach(q=>{qBank[q['question_id']]=q;});
+  const byQ={};
+  details.forEach(d=>{const qid=d['question_id'];if(!byQ[qid])byQ[qid]={text:d['текст_вопроса'],correct:d['правильный_ответ'],answers:{},total:0,ok:0};const ans=d['ответ_сотрудника']||'нет ответа';byQ[qid].answers[ans]=(byQ[qid].answers[ans]||0)+1;byQ[qid].total++;if(d['верно']==='TRUE'||d['верно']===true||d['верно']==='1')byQ[qid].ok++;});
+  const qHtml=Object.keys(byQ).length?Object.entries(byQ).map(([qid,q],i)=>{
+    const sr=Math.round(q.ok/q.total*100),prob=sr<50;
+    const qInfo=qBank[qid];
+    return `<div class="question-block ${prob?'problem':'ok'}"><div class="question-label ${prob?'problem':''}">Вопрос ${i+1}${prob?` · ⚠ ПРОБЛЕМНЫЙ (${sr}% верных)`:` · ${sr}% верных`}</div><div class="question-text">${q.text}</div>${buildAnswerBars(q,prob)}${buildBZ(qInfo)}</div>`;
+  }).join(''):'<div class="empty">Нет данных по вопросам</div>';
+  document.getElementById('test-detail-content').innerHTML=`
+    <div class="metrics-grid" style="margin-bottom:20px">
+      <div class="metric-card"><div class="metric-label">Тест</div><div style="font-size:16px;font-weight:700;margin-top:4px">${цикл} · Тест №${номер}</div><div class="metric-sub">${ауд}</div></div>
+      <div class="metric-card"><div class="metric-label">Попыток</div><div class="metric-value">${results.length}</div></div>
+      <div class="metric-card"><div class="metric-label">Средний балл</div><div class="metric-value ${scC(avg)}">${avg}%</div></div>
+      <div class="metric-card"><div class="metric-label">Успех ≥80%</div><div class="metric-value ${scC(succ)}">${succ}%</div></div>
+      <div class="metric-card"><div class="metric-label">Когн. сложность</div><div class="metric-value" onmouseenter="showTip(event,'Доля сотрудников, сдавших тест на ≥80% с первой попытки.')" onmouseleave="hideTip()" style="cursor:help">${ck}</div></div>
+    </div>
+    <div class="inner-tabs">
+      <div class="inner-tab active" onclick="switchInner('td-emp','td-ans',this)">По сотрудникам</div>
+      <div class="inner-tab" onclick="switchInner('td-ans','td-emp',this)">По ответам</div>
+    </div>
+    <div class="inner-view active" id="td-emp"><div class="table-card"><div class="table-header"><div class="table-title">Результаты по сотрудникам</div></div><table><thead><tr><th>ФИО</th><th>Руководитель</th><th>Балл</th><th>Статус</th><th>Попытка</th><th>Напоминаний</th><th>Дата</th></tr></thead><tbody>${empRows||'<tr><td colspan="7" class="empty">Нет данных</td></tr>'}</tbody></table></div></div>
+    <div class="inner-view" id="td-ans">${qHtml}</div>`;
+  document.getElementById('test-list-wrap').style.display='none';
+  document.getElementById('test-detail-wrap').style.display='block';
+}
+function switchInner(s,h,el){document.getElementById(s).classList.add('active');document.getElementById(h).classList.remove('active');el.parentElement.querySelectorAll('.inner-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');}
+function showTestList(){document.getElementById('test-list-wrap').style.display='block';document.getElementById('test-detail-wrap').style.display='none';}
+
+// ===== ПРОГРЕСС ПО ЦИКЛУ =====
+function renderProgress(){
+  const cycle=document.getElementById('f-cycle-prog').value,aud=document.getElementById('f-aud-prog').value,mgr=document.getElementById('f-mgr-prog').value;
+  if(!cycle){document.getElementById('progress-content').innerHTML='<div class="empty">Выберите цикл для отображения прогресса</div>';return;}
+
+  // Всегда 6 тестов
+  const testNums=[1,2,3,4,5,6];
+  const cycleResults=DATA.results.filter(r=>r['цикл']===cycle);
+
+  let emps=DATA.employees.filter(e=>e['активен']==='да');
+  if(aud)emps=emps.filter(e=>e['целевая_аудитория']===aud);
+  if(mgr)emps=emps.filter(e=>e['никнейм_руководителя']===mgr);
+
+  // Сводный прогресс: кол-во уникальных пройденных пар emp+тест / (кол-во активных сотрудников * 6)
+  const totalPossible=emps.length*TOTAL_TESTS;
+  const completedPairs=new Set();
+  cycleResults.forEach(r=>{
+    if(emps.some(e=>e['employee_id']===r['employee_id'])) {
+      completedPairs.add(`${r['employee_id']}|${r['номер_теста']}`);
+    }
+  });
+  const completedCount=completedPairs.size;
+  const progressPct=totalPossible>0?Math.round(completedCount/totalPossible*100):0;
+
+  const testHeaders=testNums.map(n=>`<th style="text-align:center;min-width:80px">Тест №${n}</th>`).join('');
+  const rows=emps.map(e=>{
+    const er=cycleResults.filter(r=>r['employee_id']===e['employee_id']);
+    let totalScore=0,testCount=0;
+    const cells=testNums.map(n=>{
+      const tr=er.filter(r=>Number(r['номер_теста'])===n);
+      if(!tr.length)return`<td class="score-cell sc-empty">—</td>`;
+      const best=tr.sort((a,b)=>Number(b['балл'])-Number(a['балл']))[0];
+      const score=Number(best['балл']);
+      if(score===0&&isAutoClosed(best['result_id'])){totalScore+=0;testCount++;return`<td class="score-cell sc-auto" onmouseenter="showTip(event,'Тест закрыт автоматически с оценкой 0')" onmouseleave="hideTip()">✕</td>`;}
+      totalScore+=score;testCount++;
+      const cls=score>=80?'sc-green':score>=70?'sc-yellow':'sc-red';
+      return`<td class="score-cell ${cls}">${score}%</td>`;
+    }).join('');
+    const avgScore=testCount?Math.round(totalScore/testCount):null;
+    const avgCell=avgScore!==null?`<td class="score-cell ${avgScore>=80?'sc-green':avgScore>=70?'sc-yellow':'sc-red'}" style="font-weight:700">${avgScore}%</td>`:`<td class="score-cell sc-empty">—</td>`;
+    return`<tr><td>${e['ФИО']}</td><td>${e['целевая_аудитория']||'—'}</td><td>${e['никнейм_руководителя']||'—'}</td>${cells}${avgCell}</tr>`;
+  }).join('');
+
+  document.getElementById('progress-content').innerHTML=`
+    <div class="cycle-summary">
+      <div class="cycle-summary-title">Общий прогресс цикла ${cycle}</div>
+      <div class="cycle-progress-bar">
+        <div class="cycle-progress-fill" style="width:${progressPct}%;min-width:${progressPct>0?'40px':'0'}">${progressPct>5?progressPct+'%':''}</div>
+      </div>
+      <div class="cycle-progress-label">
+        <span>${completedCount} из ${totalPossible} тестов пройдено</span>
+        <span>${progressPct}%</span>
+      </div>
+    </div>
+    <div class="table-card"><div class="table-header"><div class="table-title">Прогресс по циклу ${cycle}</div></div>
+      <div class="progress-table"><table>
+        <thead><tr><th>ФИО</th><th>Аудитория</th><th>Руководитель</th>${testHeaders}<th style="text-align:center">Ср. балл</th></tr></thead>
+        <tbody>${rows||`<tr><td colspan="${4+testNums.length}" class="empty">Нет данных</td></tr>`}</tbody>
+      </table></div></div>`;
+}
+
+function exportProgress(){
+  const cycle=document.getElementById('f-cycle-prog').value,aud=document.getElementById('f-aud-prog').value,mgr=document.getElementById('f-mgr-prog').value;
+  if(!cycle)return;
+  const testNums=[1,2,3,4,5,6];
+  const cycleResults=DATA.results.filter(r=>r['цикл']===cycle);
+  let emps=DATA.employees.filter(e=>e['активен']==='да');
+  if(aud)emps=emps.filter(e=>e['целевая_аудитория']===aud);
+  if(mgr)emps=emps.filter(e=>e['никнейм_руководителя']===mgr);
+  const headers=['ФИО','Аудитория','Руководитель',...testNums.map(n=>`Тест №${n}`),'Ср. балл'];
+  const rows=emps.map(e=>{
+    const er=cycleResults.filter(r=>r['employee_id']===e['employee_id']);
+    let total=0,cnt=0;
+    const cells=testNums.map(n=>{
+      const tr=er.filter(r=>Number(r['номер_теста'])===n);
+      if(!tr.length)return'—';
+      const best=tr.sort((a,b)=>Number(b['балл'])-Number(a['балл']))[0];
+      const s=Number(best['балл']);
+      if(s===0&&isAutoClosed(best['result_id'])){total+=0;cnt++;return'Авто-закрыт (0%)';}
+      total+=s;cnt++;return s+'%';
+    });
+    return[e['ФИО'],e['целевая_аудитория'],e['никнейм_руководителя'],...cells,cnt?Math.round(total/cnt)+'%':'—'];
+  });
+  exportToExcel(rows,headers,`progress_${cycle}`);
+}
+
+loadData();
+</script>
+</body>
+</html>
