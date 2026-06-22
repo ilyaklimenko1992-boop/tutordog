@@ -292,7 +292,10 @@
           "id": "CLtUZrMeBHsJ9IND",
           "name": "Google Service Account account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -454,7 +457,10 @@
           "id": "CLtUZrMeBHsJ9IND",
           "name": "Google Service Account account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -636,7 +642,10 @@
           "id": "CLtUZrMeBHsJ9IND",
           "name": "Google Service Account account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -922,7 +931,10 @@
           "id": "CLtUZrMeBHsJ9IND",
           "name": "Google Service Account account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -1583,7 +1595,10 @@
           "id": "CLtUZrMeBHsJ9IND",
           "name": "Google Service Account account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
     }
   ],
   "pinData": {},
