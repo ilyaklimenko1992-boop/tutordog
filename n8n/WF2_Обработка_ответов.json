@@ -1241,9 +1241,8 @@
     },
     {
       "parameters": {
-        "operation": "get",
-        "key": "={{ 'processing_' + String($('Парсинг вебхука').first().json.message_id) }}",
-        "options": {}
+        "operation": "incr",
+        "key": "={{ 'processing_' + String($('Парсинг вебхука').first().json.message_id) }}"
       },
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
@@ -1262,7 +1261,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const processing = $('get processing (ответ)').first().json.propertyName ?? '';\nif (processing === '1') return [];\nreturn [{ json: $('Парсинг вебхука').first().json }];"
+        "jsCode": "const msgId = String($('Парсинг вебхука').first().json.message_id);\nconst count = Number($('get processing (ответ)').first().json['processing_' + msgId]);\nif (count !== 1) return [];\nreturn [{ json: $('Парсинг вебхука').first().json }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1341,7 +1340,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const webhookData = $('Парсинг вебхука').first().json;\nconst token = 'Bearer ' + $env.PACHCA_TOKEN + '';\nconst sessionIdRaw = $('get session_id (ответ)').first().json.propertyName ?? '';\n\nif (sessionIdRaw.startsWith('завершён:')) {\n  try {\n    await this.helpers.httpRequest({\n      method: 'PATCH',\n      url: `https://api.pachca.com/api/shared/v1/messages/${webhookData.message_id}`,\n      headers: { 'Authorization': token, 'Content-Type': 'application/json' },\n      body: { message: { content: '🔒 Тест был принудительно завершён.', buttons: [] } }\n    });\n  } catch(e) {}\n  return [];\n}\n\nreturn [{ json: webhookData }];"
+        "jsCode": "const webhookData = $('Парсинг вебхука').first().json;\nconst token = 'Bearer ' + $env.PACHCA_TOKEN + '';\nconst sessionIdRaw = $('get session_id (ответ)').first().json.propertyName ?? '';\n\nif (sessionIdRaw.startsWith('завершён:')) {\n  try {\n    await this.helpers.httpRequest({\n      method: 'PATCH',\n      url: `https://api.pachca.com/api/shared/v1/messages/${webhookData.message_id}`,\n      headers: { 'Authorization': token, 'Content-Type': 'application/json' },\n      body: { message: { content: '🔒 Тест был принудительно завершён.', buttons: [] } }\n    });\n  } catch(e) {}\n  return [];\n}\n\nconst sessionRaw = ($('GET сессия (ответ)').first().json.propertyName ?? '').replace(/^=/, '');\nif (!sessionRaw) return [];\nconst session = JSON.parse(sessionRaw);\nif (session.last_message_id && String(session.last_message_id) !== String(webhookData.message_id)) {\n  try {\n    await this.helpers.httpRequest({\n      method: 'PATCH',\n      url: `https://api.pachca.com/api/shared/v1/messages/${webhookData.message_id}`,\n      headers: { 'Authorization': token, 'Content-Type': 'application/json' },\n      body: { message: { content: '⚠️ Используй актуальную кнопку ниже.', buttons: [] } }\n    });\n  } catch(e) {}\n  return [];\n}\n\nreturn [{ json: webhookData }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1702,7 +1701,7 @@
       "main": [
         [
           {
-            "node": "Redis: clear processing",
+            "node": "Последний вопрос?",
             "type": "main",
             "index": 0
           }
@@ -1766,13 +1765,7 @@
     },
     "Redis: clear processing": {
       "main": [
-        [
-          {
-            "node": "Последний вопрос?",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Отправка вопроса": {
@@ -2051,6 +2044,17 @@
         [
           {
             "node": "Обновление Вторые попытки (завершение)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis: set last_msg след вопрос": {
+      "main": [
+        [
+          {
+            "node": "Redis: clear processing",
             "type": "main",
             "index": 0
           }
