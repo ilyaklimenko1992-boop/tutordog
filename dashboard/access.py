@@ -65,3 +65,65 @@ def get_access(fetch_records, now=None, ttl=ACCESS_TTL):
     c["data"] = data
     c["ts"] = now
     return data
+
+
+EMP_ID = "employee_id"
+EMP_AUD = "целевая_аудитория"
+EMP_MGR = "никнейм_руководителя"
+Q_AUD = "целевая_аудитория"
+
+
+def allowed_employee_ids(employees, role, login, audiences):
+    if role == "admin":
+        return None
+    if role == "division_head":
+        aud = set(audiences)
+        return {str(e.get(EMP_ID, "")) for e in employees if e.get(EMP_AUD) in aud}
+    if role == "manager":
+        lg = (login or "").lower()
+        return {str(e.get(EMP_ID, "")) for e in employees
+                if (e.get(EMP_MGR) or "").lower() == lg}
+    return set()
+
+
+def scope_payload(data, session):
+    role = session.get("role")
+    login = session.get("login") or ""
+    audiences = session.get("audiences") or []
+    employees = data.get("employees", [])
+    allowed = allowed_employee_ids(employees, role, login, audiences)
+
+    def by_emp(rows):
+        if allowed is None:
+            return list(rows)
+        return [r for r in rows if str(r.get(EMP_ID, "")) in allowed]
+
+    if role == "admin":
+        qbank = list(data.get("questions_bank", []))
+    else:
+        aud = set(audiences)
+        qbank = [q for q in data.get("questions_bank", []) if q.get(Q_AUD) in aud]
+
+    scoped = {
+        "employees": list(employees) if allowed is None else
+                     [e for e in employees if str(e.get(EMP_ID, "")) in allowed],
+        "sessions": by_emp(data.get("sessions", [])),
+        "results": by_emp(data.get("results", [])),
+        "details": by_emp(data.get("details", [])),
+        "questions_bank": qbank,
+    }
+
+    if role == "manager":
+        ui = {"show_audience_filter": False, "show_manager_filter": False}
+        empty = len(scoped["employees"]) == 0
+    elif role in ("admin", "division_head"):
+        ui = {"show_audience_filter": True, "show_manager_filter": True}
+        empty = False
+    else:
+        scoped = {k: [] for k in scoped}
+        ui = {"show_audience_filter": False, "show_manager_filter": False}
+        empty = True
+
+    ui["empty_scope"] = empty
+    scoped["ui"] = ui
+    return scoped
