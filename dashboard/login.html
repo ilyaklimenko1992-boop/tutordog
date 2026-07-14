@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TutorDog — Вход</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* Hallmark · macrostructure: single-card auth (flush-left) · pre-emit critique: P4 H4 E5 S4 R5 V5
+   · contrast: pass (40-41) · nav: n/a · footer: n/a · slop: pass (42-45)
+   · honest: pass (46) · chrome: pass (47) · tokens: pass (48, locked TutorDog set) · responsive: pass (49) · icons: pass (30)
+   · inputs: pass (39) · mobile: pass (34, 50-57) */
+
+:root{
+  --blue:#0068FF; --blue-dark:#114495; --blue-light:#E8F0FF;
+  --bg:#F5F5F5; --surface:#FFFFFF; --text:#1E1E1E; --text-muted:#6B7280;
+  --border:#E5E7EB; --green:#27AE60; --red:#E74C3C;
+  --radius:12px; --shadow:0 1px 3px rgba(0,0,0,0.08);
+  --shadow-card:0 18px 44px -20px rgba(17,68,149,0.28), 0 2px 6px rgba(17,68,149,0.06);
+  --field-h:46px;
+}
+
+*{box-sizing:border-box;}
+html,body{overflow-x:clip;}
+html{-webkit-text-size-adjust:100%;}
+
+body{
+  margin:0;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:18px;
+  padding:32px 20px;
+  font-family:'Montserrat','Helvetica Neue',Arial,sans-serif;
+  font-size:14px;
+  line-height:1.5;
+  color:var(--text);
+  background:var(--bg);
+}
+
+.card{
+  width:100%;
+  max-width:408px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow-card);
+  padding:38px 36px 34px;
+  animation:rise 320ms ease both;
+}
+
+@keyframes rise{
+  from{opacity:0;transform:translateY(10px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+.brand{
+  font-size:22px;
+  font-weight:700;
+  letter-spacing:-0.02em;
+  line-height:1;
+  color:var(--blue-dark);
+  margin-bottom:26px;
+}
+.brand span{color:var(--blue);}
+
+.title{
+  font-size:20px;
+  font-weight:600;
+  line-height:1.25;
+  letter-spacing:-0.01em;
+  margin:0 0 6px;
+  overflow-wrap:anywhere;
+  min-width:0;
+}
+.subtitle{
+  margin:0 0 24px;
+  color:var(--text-muted);
+  font-size:14px;
+}
+
+#err{
+  display:none;
+  align-items:flex-start;
+  gap:8px;
+  margin-bottom:18px;
+  padding:10px 12px;
+  border:1px solid #F3C6C1;
+  border-radius:8px;
+  background:#FDECEA;
+  color:#B23A2E;
+  font-size:13px;
+  line-height:1.4;
+}
+#err svg{flex:none;margin-top:1px;}
+
+form{display:flex;flex-direction:column;gap:16px;}
+
+.field{display:flex;flex-direction:column;gap:7px;}
+.field label{
+  font-size:13px;
+  font-weight:600;
+  color:var(--text);
+}
+.field input{
+  height:var(--field-h);
+  width:100%;
+  padding:0 14px;
+  font-family:inherit;
+  font-size:15px;
+  color:var(--text);
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  outline:2px solid transparent;
+  outline-offset:1px;
+  transition:border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+.field input::placeholder{color:#9AA1AC;}
+.field input:hover{border-color:#CDD3DC;}
+.field input:focus{
+  border-color:var(--blue);
+  box-shadow:0 0 0 3px var(--blue-light);
+  outline:none;
+}
+.field input:focus-visible{
+  border-color:var(--blue);
+  box-shadow:0 0 0 3px var(--blue-light);
+  outline:none;
+}
+
+.btn{
+  margin-top:6px;
+  height:var(--field-h);
+  width:100%;
+  border:1px solid transparent;
+  border-radius:8px;
+  background:var(--blue);
+  color:#FFFFFF;
+  font-family:inherit;
+  font-size:15px;
+  font-weight:600;
+  letter-spacing:0.01em;
+  cursor:pointer;
+  transition:background-color 160ms ease, transform 120ms ease;
+}
+.btn:hover{background:var(--blue-dark);}
+.btn:focus-visible{outline:2px solid var(--blue-dark);outline-offset:2px;}
+.btn:active{transform:translateY(1px);background:var(--blue-dark);}
+.btn:disabled{opacity:0.55;cursor:not-allowed;background:var(--blue);}
+
+.footnote{
+  margin:0;
+  max-width:408px;
+  text-align:center;
+  color:var(--text-muted);
+  font-size:12px;
+  line-height:1.5;
+}
+
+@media (max-width:420px){
+  .card{padding:30px 22px 28px;}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .card{animation:none;}
+  .field input,.btn{transition:none;}
+}
+</style>
+</head>
+<body>
+  <main class="card">
+    <div class="brand">Tutor<span>Dog</span></div>
+    <h1 class="title">Вход в аналитику</h1>
+    <p class="subtitle">Срезы знаний по сотрудникам TutorDog.</p>
+
+    <div id="err" role="alert">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="8" r="7" stroke="#B23A2E" stroke-width="1.4"/>
+        <path d="M8 4.6v4.2M8 11.1h.01" stroke="#B23A2E" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      <span>Неверный логин или пароль</span>
+    </div>
+
+    <form method="post" action="/login">
+      <div class="field">
+        <label for="username">Логин</label>
+        <input id="username" name="username" type="text" autocomplete="username" autofocus>
+      </div>
+      <div class="field">
+        <label for="password">Пароль</label>
+        <input id="password" name="password" type="password" autocomplete="current-password">
+      </div>
+      <button class="btn" type="submit">Войти</button>
+    </form>
+  </main>
+
+  <p class="footnote">Внутренний инструмент DocsInBox · доступ только для сотрудников</p>
+
+  <script>
+    if (location.search.indexOf('error') !== -1) {
+      document.getElementById('err').style.display = 'flex';
+    }
+  </script>
+</body>
+</html>

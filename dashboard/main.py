@@ -1,22 +1,22 @@
 # main.py — бэкенд дашборда TutorDog
-# Читает данные из Google Sheets и отдаёт их фронтенду
-# Запуск: DASH_USER=... DASH_PASS=... python3 -m uvicorn main:app --host 127.0.0.1 --port 8000
+# Читает данные из Google Sheets и отдаёт их фронтенду за сессионной авторизацией.
+# Запуск: DASH_USER=... DASH_PASS=... SESSION_SECRET=... \
+#   python3 -m uvicorn main:app --host 127.0.0.1 --port 8010
 
 import os
 import secrets
 import time
 
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.responses import HTMLResponse
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi import FastAPI, Request, Form
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from starlette.middleware.sessions import SessionMiddleware
 import gspread
 from google.oauth2.service_account import Credentials
 
-app = FastAPI()
-security = HTTPBasic()
-
 # Пути и ID таблиц
 CREDS_FILE = '/opt/tutordog-dashboard/service_account.json'
+INDEX_PAGE = '/opt/tutordog-dashboard/index.html'
+LOGIN_PAGE = '/opt/tutordog-dashboard/login.html'
 SHEET_MAIN = '1czMIqlFs5QtRN08EJ-DeWMxCGrwXPoAFh5kpKaZcIzA'      # Сотрудники, Активные сессии, Банк вопросов
 SHEET_RESULTS = '14w82dGBM2JAeYFGcb8lP8i7uHM4BCm7LAf5jLfds15k'   # Итоги тестов, Детализация ответов
 
@@ -26,35 +26,48 @@ SCOPES = [
     'https://www.googleapis.com/auth/drive'
 ]
 
-# Учётные данные дашборда — только из окружения, без дефолтов
+# Учётные данные дашборда и ключ подписи сессии — только из окружения, без дефолтов
 DASH_USER = os.environ.get('DASH_USER', '')
 DASH_PASS = os.environ.get('DASH_PASS', '')
+SESSION_SECRET = os.environ.get('SESSION_SECRET', '')
+
+# Fail-fast: без стойкого ключа подпись сессии подделываема, без кред вход невозможен
+if len(SESSION_SECRET) < 32:
+    raise RuntimeError('SESSION_SECRET is missing or too short (need >= 32 chars)')
+if not DASH_USER or not DASH_PASS:
+    raise RuntimeError('DASH_USER/DASH_PASS are not configured')
+
+# Срок жизни сессии — 30 дней («запомнить меня» по умолчанию)
+SESSION_MAX_AGE = 60 * 60 * 24 * 30
 
 # Кэш ответа /api/data, чтобы не бить по квоте Google Sheets на каждый запрос
 CACHE_TTL_SECONDS = 60
 _cache = {'ts': 0.0, 'data': None}
 
+app = FastAPI()
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_SECRET,
+    max_age=SESSION_MAX_AGE,
+    same_site='lax',
+    https_only=True,
+)
 
-def require_auth(credentials: HTTPBasicCredentials = Depends(security)):
-    # Basic-аутентификация; сравнение через compare_digest от timing-атак
+
+def is_authed(request: Request) -> bool:
+    return request.session.get('auth') is True
+
+
+def credentials_valid(username: str, password: str) -> bool:
+    # Сравнение через compare_digest — постоянное время, защита от timing-атак
     if not DASH_USER or not DASH_PASS:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail='Dashboard auth is not configured (DASH_USER/DASH_PASS)'
-        )
-    user_ok = secrets.compare_digest(credentials.username, DASH_USER)
-    pass_ok = secrets.compare_digest(credentials.password, DASH_PASS)
-    if not (user_ok and pass_ok):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='Unauthorized',
-            headers={'WWW-Authenticate': 'Basic'},
-        )
-    return credentials.username
+        return False
+    user_ok = secrets.compare_digest(username, DASH_USER)
+    pass_ok = secrets.compare_digest(password, DASH_PASS)
+    return user_ok and pass_ok
 
 
 def get_sheets_client():
-    # Авторизация через сервисный аккаунт
     creds = Credentials.from_service_account_file(CREDS_FILE, scopes=SCOPES)
     return gspread.authorize(creds)
 
@@ -73,9 +86,32 @@ def load_data():
     }
 
 
+@app.get("/login", response_class=HTMLResponse)
+def login_page(request: Request):
+    if is_authed(request):
+        return RedirectResponse('/', status_code=302)
+    with open(LOGIN_PAGE, 'r', encoding='utf-8') as f:
+        return HTMLResponse(f.read())
+
+
+@app.post("/login")
+def login_submit(request: Request, username: str = Form(''), password: str = Form('')):
+    if credentials_valid(username, password):
+        request.session['auth'] = True
+        return RedirectResponse('/', status_code=303)
+    return RedirectResponse('/login?error=1', status_code=303)
+
+
+@app.get("/logout")
+def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse('/login', status_code=303)
+
+
 @app.get("/api/data")
-def get_data(user: str = Depends(require_auth)):
-    # Основной эндпоинт — возвращает все данные для дашборда (за аутентификацией, с кэшем)
+def get_data(request: Request):
+    if not is_authed(request):
+        return JSONResponse({'detail': 'Unauthorized'}, status_code=401)
     now = time.monotonic()
     if _cache['data'] is None or now - _cache['ts'] > CACHE_TTL_SECONDS:
         _cache['data'] = load_data()
@@ -84,7 +120,8 @@ def get_data(user: str = Depends(require_auth)):
 
 
 @app.get("/", response_class=HTMLResponse)
-def dashboard(user: str = Depends(require_auth)):
-    # Отдаёт HTML-страницу дашборда
-    with open('/opt/tutordog-dashboard/index.html', 'r') as f:
-        return f.read()
+def dashboard(request: Request):
+    if not is_authed(request):
+        return RedirectResponse('/login', status_code=302)
+    with open(INDEX_PAGE, 'r', encoding='utf-8') as f:
+        return HTMLResponse(f.read())
