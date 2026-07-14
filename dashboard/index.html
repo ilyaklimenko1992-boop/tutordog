@@ -114,6 +114,36 @@
   .link-text { color: var(--blue); font-weight: 600; }
   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
   @media (max-width: 768px) { .content { padding: 16px; } .metrics-grid { grid-template-columns: repeat(2, 1fr); } .two-col { grid-template-columns: 1fr; } }
+  .role-empty-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 40px 24px;
+    text-align: center;
+  }
+  .role-empty-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .role-empty-icon svg {
+    width: 40px;
+    height: 40px;
+  }
+  .role-empty-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--blue-dark);
+  }
+  .role-empty-text {
+    margin: 24px auto 0;
+    max-width: 460px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-muted);
+  }
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
@@ -137,6 +167,22 @@
 </div>
 
 <div class="content">
+
+  <div id="role-empty-notice" style="display:none">
+    <div class="role-empty-card">
+      <div class="role-empty-icon" aria-hidden="true">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="20" fill="var(--blue-light)"/>
+          <circle cx="15" cy="15" r="4" stroke="var(--blue)" stroke-width="2"/>
+          <path d="M8 27c0-4 3-7 7-7s7 3 7 7" stroke="var(--blue)" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="26" cy="16" r="3" stroke="var(--blue)" stroke-width="2"/>
+          <path d="M22 27c0-3.5 2-6 5-6" stroke="var(--blue)" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <h3 class="role-empty-title">Команда пока не закреплена</h3>
+      <p class="role-empty-text">За вами в системе не числятся сотрудники, поэтому показывать нечего. Если это ошибка, напишите Александре Любимкиной или своему руководителю — нужно связать вас в таблице сотрудников.</p>
+    </div>
+  </div>
 
   <div class="view active" id="view-overview">
     <div class="filters">
@@ -214,11 +260,34 @@ function moveTip(e){let x=e.clientX+12,y=e.clientY+12;if(x+300>window.innerWidth
 function hideTip(){TT.style.display='none';}
 document.addEventListener('mousemove',e=>{if(TT.style.display==='block')moveTip(e);});
 
+function hideField(id){
+  var el=document.getElementById(id);
+  if(!el) return;
+  if(el.previousElementSibling && el.previousElementSibling.tagName==='LABEL'){
+    el.previousElementSibling.style.display='none';
+  }
+  el.style.display='none';
+}
+function applyRoleUI(ui){
+  var notice=document.getElementById('role-empty-notice');
+  var main=document.querySelector('.content');
+  if(ui.empty_scope){
+    if(notice) notice.style.display='';
+    Array.prototype.forEach.call(document.querySelectorAll('.view'),function(v){v.style.display='none';});
+    var nav=document.querySelector('.nav'); if(nav) nav.style.display='none';
+    return;
+  }
+  if(notice) notice.style.display='none';
+  if(ui.show_audience_filter===false){ ['f-aud-ov','f-aud-emp','f-aud-prog'].forEach(hideField); }
+  if(ui.show_manager_filter===false){ ['f-mgr-ov','f-mgr-emp','f-mgr-prog'].forEach(hideField); }
+}
+
 // Загрузка
 async function loadData() {
   document.getElementById('lastUpdated').textContent='Загрузка...';
   try {
     const res=await fetch('/api/data'); DATA=await res.json();
+    applyRoleUI(DATA.ui || {});
     const now=new Date().toLocaleString('ru-RU',{timeZone:'Europe/Moscow',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
     document.getElementById('lastUpdated').textContent='Обновлено: '+now;
     populateFilters(); renderCurrentView();
