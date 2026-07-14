@@ -1,3 +1,5 @@
+import time
+
 import bcrypt
 
 KNOWN_ROLES = {"admin", "manager", "division_head"}
@@ -38,3 +40,28 @@ def authenticate(access, username, password):
     if not verify_password(password, entry["password_hash"]):
         return None
     return {"login": entry["login"], "role": entry["role"], "audiences": entry["audiences"]}
+
+
+ACCESS_TTL = 300
+_access_cache = {"ts": 0.0, "data": None}
+
+
+def reset_access_cache():
+    _access_cache["ts"] = 0.0
+    _access_cache["data"] = None
+
+
+def get_access(fetch_records, now=None, ttl=ACCESS_TTL):
+    now = time.monotonic() if now is None else now
+    c = _access_cache
+    if c["data"] is not None and now - c["ts"] <= ttl:
+        return c["data"]
+    try:
+        data = parse_access(fetch_records())
+    except Exception:
+        if c["data"] is not None:
+            return c["data"]
+        raise
+    c["data"] = data
+    c["ts"] = now
+    return data
