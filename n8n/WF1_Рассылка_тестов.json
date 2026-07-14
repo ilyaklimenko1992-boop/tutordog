@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-06-24T13:08:07.000Z",
+  "createdAt": "2026-06-18T13:58:42.674Z",
+  "id": "BpwTsxtFHmkKYVqq",
   "name": "WF1 — Рассылка тестов",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
@@ -7,7 +13,7 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 0 10 * * *"
+              "expression": "0 0 11 * * *"
             }
           ]
         }
@@ -67,7 +73,7 @@
       "name": "Сотрудники",
       "credentials": {
         "googleApi": {
-          "id": "CLtUZrMeBHsJ9IND",
+          "id": "iOIcHY5XoWOTfdq1",
           "name": "Google Service Account account"
         }
       },
@@ -108,7 +114,7 @@
       "name": "Банк вопросов",
       "credentials": {
         "googleApi": {
-          "id": "CLtUZrMeBHsJ9IND",
+          "id": "iOIcHY5XoWOTfdq1",
           "name": "Google Service Account account"
         }
       },
@@ -328,7 +334,7 @@
       "name": "Запись сессии",
       "credentials": {
         "googleApi": {
-          "id": "CLtUZrMeBHsJ9IND",
+          "id": "iOIcHY5XoWOTfdq1",
           "name": "Google Service Account account"
         }
       },
@@ -395,7 +401,7 @@
       "name": "Дата теста",
       "credentials": {
         "googleApi": {
-          "id": "CLtUZrMeBHsJ9IND",
+          "id": "iOIcHY5XoWOTfdq1",
           "name": "Google Service Account account"
         }
       },
@@ -501,7 +507,7 @@
       "name": "Redis старт счетчика",
       "credentials": {
         "redis": {
-          "id": "BCdcUQuZTVYaTRLM",
+          "id": "SrsBHXSwvsceprs8",
           "name": "Redis account"
         }
       }
@@ -522,7 +528,7 @@
       "name": "Redis: сохранить сессию",
       "credentials": {
         "redis": {
-          "id": "BCdcUQuZTVYaTRLM",
+          "id": "SrsBHXSwvsceprs8",
           "name": "Redis account"
         }
       }
@@ -543,7 +549,7 @@
       "name": "Redis: сохранить user→session",
       "credentials": {
         "redis": {
-          "id": "BCdcUQuZTVYaTRLM",
+          "id": "SrsBHXSwvsceprs8",
           "name": "Redis account"
         }
       }
@@ -564,7 +570,7 @@
       "name": "Redis: проверка дубля",
       "credentials": {
         "redis": {
-          "id": "BCdcUQuZTVYaTRLM",
+          "id": "SrsBHXSwvsceprs8",
           "name": "Redis account"
         }
       }
@@ -609,7 +615,6 @@
       "name": "Фильтр сотрудников"
     }
   ],
-  "pinData": {},
   "connections": {
     "Schedule Trigger": {
       "main": [
@@ -818,16 +823,49 @@
       ]
     }
   },
-  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "d4f6f936-5d94-40e0-98b9-a46081433b06",
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "4c63e90e523310677ea46f9435057f02f020287d0be29c922e7e3dadd6f51b0b"
   },
-  "id": "BpwTsxtFHmkKYVqq",
-  "tags": []
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "8b422635-277a-4f2e-a99d-ea341ff250b0",
+  "activeVersionId": "8b422635-277a-4f2e-a99d-ea341ff250b0",
+  "versionCounter": 4,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-06-18T13:58:42.683Z",
+      "createdAt": "2026-06-18T13:58:42.683Z",
+      "role": "workflow:owner",
+      "workflowId": "BpwTsxtFHmkKYVqq",
+      "projectId": "Fiq8H96iD3cYqbwj",
+      "project": {
+        "updatedAt": "2026-06-18T14:58:48.085Z",
+        "createdAt": "2026-06-18T13:56:57.485Z",
+        "id": "Fiq8H96iD3cYqbwj",
+        "name": "Ilya Klimenko <i.klimenko@docsinbox.ru>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "cc3b7aea-c692-4597-b610-33616c4fbc77"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
 }

@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-06-24T13:08:28.000Z",
+  "createdAt": "2026-06-18T13:58:42.713Z",
+  "id": "6HrrHzYCQf7mFxLa",
   "name": "WF4 — Вторая попытка",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
@@ -36,7 +42,7 @@
       "name": "Вторые попытки",
       "credentials": {
         "googleApi": {
-          "id": "CLtUZrMeBHsJ9IND",
+          "id": "iOIcHY5XoWOTfdq1",
           "name": "Google Service Account account"
         }
       },
@@ -105,7 +111,7 @@
       "name": "Данные сотрудника",
       "credentials": {
         "googleApi": {
-          "id": "CLtUZrMeBHsJ9IND",
+          "id": "iOIcHY5XoWOTfdq1",
           "name": "Google Service Account account"
         }
       },
@@ -129,7 +135,7 @@
       "name": "Redis: проверка активной сессии",
       "credentials": {
         "redis": {
-          "id": "BCdcUQuZTVYaTRLM",
+          "id": "SrsBHXSwvsceprs8",
           "name": "Redis account"
         }
       }
@@ -207,7 +213,7 @@
       "name": "Банк вопросов",
       "credentials": {
         "googleApi": {
-          "id": "CLtUZrMeBHsJ9IND",
+          "id": "iOIcHY5XoWOTfdq1",
           "name": "Google Service Account account"
         }
       },
@@ -244,7 +250,7 @@
       "name": "Redis: сохранить сессию",
       "credentials": {
         "redis": {
-          "id": "BCdcUQuZTVYaTRLM",
+          "id": "SrsBHXSwvsceprs8",
           "name": "Redis account"
         }
       }
@@ -445,7 +451,7 @@
       "name": "Запись в Активные сессии",
       "credentials": {
         "googleApi": {
-          "id": "CLtUZrMeBHsJ9IND",
+          "id": "iOIcHY5XoWOTfdq1",
           "name": "Google Service Account account"
         }
       },
@@ -469,7 +475,7 @@
       "name": "Redis старт счётчика",
       "credentials": {
         "redis": {
-          "id": "BCdcUQuZTVYaTRLM",
+          "id": "SrsBHXSwvsceprs8",
           "name": "Redis account"
         }
       }
@@ -503,7 +509,7 @@
       "name": "Redis: обновить сессию",
       "credentials": {
         "redis": {
-          "id": "BCdcUQuZTVYaTRLM",
+          "id": "SrsBHXSwvsceprs8",
           "name": "Redis account"
         }
       }
@@ -524,7 +530,7 @@
       "name": "Redis: сохранить user→session",
       "credentials": {
         "redis": {
-          "id": "BCdcUQuZTVYaTRLM",
+          "id": "SrsBHXSwvsceprs8",
           "name": "Redis account"
         }
       }
@@ -649,7 +655,7 @@
       "name": "Обновление Вторые попытки",
       "credentials": {
         "googleApi": {
-          "id": "CLtUZrMeBHsJ9IND",
+          "id": "iOIcHY5XoWOTfdq1",
           "name": "Google Service Account account"
         }
       },
@@ -663,7 +669,7 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 0 10 * * *"
+              "expression": "0 0 11 * * *"
             }
           ]
         }
@@ -678,7 +684,6 @@
       "name": "Schedule Trigger"
     }
   ],
-  "pinData": {},
   "connections": {
     "Вторые попытки": {
       "main": [
@@ -876,16 +881,49 @@
       ]
     }
   },
-  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "09ce81a6-d0bc-441d-a843-51a960251b34",
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "4c63e90e523310677ea46f9435057f02f020287d0be29c922e7e3dadd6f51b0b"
   },
-  "id": "6HrrHzYCQf7mFxLa",
-  "tags": []
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "d2ee6ae1-9624-4519-b32a-b4c311a4f204",
+  "activeVersionId": "d2ee6ae1-9624-4519-b32a-b4c311a4f204",
+  "versionCounter": 3,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-06-18T13:58:42.717Z",
+      "createdAt": "2026-06-18T13:58:42.717Z",
+      "role": "workflow:owner",
+      "workflowId": "6HrrHzYCQf7mFxLa",
+      "projectId": "Fiq8H96iD3cYqbwj",
+      "project": {
+        "updatedAt": "2026-06-18T14:58:48.085Z",
+        "createdAt": "2026-06-18T13:56:57.485Z",
+        "id": "Fiq8H96iD3cYqbwj",
+        "name": "Ilya Klimenko <i.klimenko@docsinbox.ru>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "cc3b7aea-c692-4597-b610-33616c4fbc77"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
 }

@@ -1,12 +1,18 @@
 {
+  "updatedAt": "2026-07-01T08:06:46.534Z",
+  "createdAt": "2026-06-18T13:58:42.706Z",
+  "id": "ZkVntGrMMgoCeOD1",
   "name": "WF3 — Отправка напоминаний",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
         "rule": {
           "interval": [
             {
-              "triggerAtHour": 10
+              "triggerAtHour": 11
             }
           ]
         }
@@ -48,15 +54,15 @@
       ],
       "id": "35ae30ca-43f7-420a-ac57-f2ee5a57f11f",
       "name": "Расписание уведомлений",
-      "credentials": {
-        "googleApi": {
-          "id": "CLtUZrMeBHsJ9IND",
-          "name": "Google Service Account account"
-        }
-      },
       "retryOnFail": true,
       "maxTries": 5,
-      "waitBetweenTries": 5000
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleApi": {
+          "id": "iOIcHY5XoWOTfdq1",
+          "name": "Google Service Account account"
+        }
+      }
     },
     {
       "parameters": {
@@ -98,19 +104,19 @@
       "name": "Активные сессии",
       "alwaysOutputData": false,
       "executeOnce": true,
-      "credentials": {
-        "googleApi": {
-          "id": "CLtUZrMeBHsJ9IND",
-          "name": "Google Service Account account"
-        }
-      },
       "retryOnFail": true,
       "maxTries": 5,
-      "waitBetweenTries": 5000
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleApi": {
+          "id": "iOIcHY5XoWOTfdq1",
+          "name": "Google Service Account account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const schedule = $('Расписание уведомлений').all();\nconst sessions = $('Активные сессии').all()\n  .filter(s => s.json.session_id && s.json.session_id !== '');\n\n// Читаем расписание из таблицы\nconst days = {};\nschedule.forEach(row => {\n  days[row.json.ключ] = Number(row.json.значение);\n});\n\nconst reminder1 = days['reminder_day_1'];      // день 1го напоминания\nconst reminder2 = days['reminder_day_2'];      // день 2го напоминания\nconst reminder3 = days['reminder_day_3'];      // день 3го напоминания\nconst autoClose = days['auto_close_day'];      // дедлайн первой попытки (28 дней)\nconst autoClose2 = days['auto_close_attempt_2_day'] ?? 3; // дедлайн второй попытки (3 дня, по умолчанию)\n\nconst now = new Date();\n\nconst active = sessions\n  .filter(s => ['назначен', 'в процессе'].includes(s.json.статус))\n  .map(s => {\n    const sentAt = new Date(s.json.sent_at);\n    const daysPassed = Math.floor((now - sentAt) / (1000 * 60 * 60 * 24));\n    const reminderCount = Number(s.json.reminder_count || 0);\n    const isAttempt2 = Number(s.json.номер_попытки) === 2;\n\n    // Для второй попытки — короткий дедлайн, для первой — стандартный\n    const дедлайн = isAttempt2 ? autoClose2 : autoClose;\n\n    let action = null;\n\n    // Автозакрытие — одинаково для всех, но с разным дедлайном\n    if (daysPassed >= дедлайн) {\n      action = 'auto_close';\n\n    // Напоминания — только для первой попытки\n    } else if (!isAttempt2) {\n      if (daysPassed >= reminder3 && reminderCount < 3) action = 'reminder_3';\n      else if (daysPassed >= reminder2 && reminderCount < 2) action = 'reminder_2';\n      else if (daysPassed >= reminder1 && reminderCount < 1) action = 'reminder_1';\n    }\n\n    return {\n      ...s.json,\n      days_passed: daysPassed,\n      action: action\n    };\n  })\n  .filter(s => s.action !== null); // убираем тех у кого нет действия\n\nreturn active.map(s => ({ json: s }));"
+        "jsCode": "const schedule = $('Расписание уведомлений').all();\nconst sessions = $('Активные сессии').all()\n  .filter(s => s.json.session_id && s.json.session_id !== '');\n\n// Читаем расписание из таблицы\nconst days = {};\nschedule.forEach(row => {\n  days[row.json.ключ] = Number(row.json.значение);\n});\n\nconst reminder1 = days['reminder_day_1'];      // день 1го напоминания\nconst reminder2 = days['reminder_day_2'];      // день 2го напоминания\nconst reminder3 = days['reminder_day_3'];      // день 3го напоминания\nconst autoClose = days['auto_close_day'];      // дедлайн первой попытки (28 дней)\nconst autoClose2 = days['auto_close_attempt_2_day'] ?? 3; // дедлайн второй попытки (3 дня, по умолчанию)\n\nconst now = new Date();\n\nconst active = sessions\n  .filter(s => ['назначен', 'в процессе'].includes(s.json.статус))\n  .map(s => {\n    const rawDate = s.json.sent_at || '';\nconst [datePart, timePart] = rawDate.split(', ');\nconst [d, m, y] = datePart.split('.');\nconst sentAt = new Date(`${y}-${m}-${d}T${timePart || '00:00:00'}`);\n    const daysPassed = Math.floor((now - sentAt) / (1000 * 60 * 60 * 24));\n    const reminderCount = Number(s.json.reminder_count || 0);\n    const isAttempt2 = Number(s.json.номер_попытки) === 2;\n\n    // Для второй попытки — короткий дедлайн, для первой — стандартный\n    const дедлайн = isAttempt2 ? autoClose2 : autoClose;\n\n    let action = null;\n\n    // Автозакрытие — одинаково для всех, но с разным дедлайном\n    if (daysPassed >= дедлайн) {\n      action = 'auto_close';\n\n    // Напоминания — только для первой попытки\n    } else if (!isAttempt2) {\n      if (daysPassed >= reminder3 && reminderCount < 3) action = 'reminder_3';\n      else if (daysPassed >= reminder2 && reminderCount < 2) action = 'reminder_2';\n      else if (daysPassed >= reminder1 && reminderCount < 1) action = 'reminder_1';\n    }\n\n    return {\n      ...s.json,\n      days_passed: daysPassed,\n      action: action\n    };\n  })\n  .filter(s => s.action !== null); // убираем тех у кого нет действия\n\nreturn active.map(s => ({ json: s }));"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -271,7 +277,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const sheetData = $('Какое действие?').first().json;\nconst employee = $('Sheets: получить никнейм сотрудника').first().json;\nconst employeeNickname = employee.никнейм_сотрудника;\nconst managerNickname = employee.никнейм_руководителя;\nconst session = { ...sheetData };\n\n// Шаг 1: Отправляем сообщение сотруднику\nconst msgResponse = await this.helpers.httpRequest({\n  method: 'POST',\n  url: 'https://api.pachca.com/api/shared/v1/messages',\n  headers: {\n    'Authorization': 'Bearer ' + $env.PACHCA_TOKEN + '',\n    'Content-Type': 'application/json'\n  },\n  body: {\n    message: {\n      entity_type: 'user',\n      entity_id: Number(session.pachca_user_id),\n      content: `⚠️ Срез знаний не пройден в течение 21 дня. Обрати внимание: через неделю тест закроется автоматически с оценкой 0%.`\n    }\n  }\n});\n\nconst messageId = msgResponse.data.id;\n\n// Шаг 2: Создаём тред под сообщением\nconst threadResponse = await this.helpers.httpRequest({\n  method: 'POST',\n  url: `https://api.pachca.com/api/shared/v1/messages/${messageId}/thread`,\n  headers: {\n    'Authorization': 'Bearer ' + $env.PACHCA_TOKEN + '',\n    'Content-Type': 'application/json'\n  },\n  body: {}\n});\n\nconst threadChatId = threadResponse.data.chat_id;\n\n// Шаг 3: Пишем в тред с упоминанием руководителя\nawait this.helpers.httpRequest({\n  method: 'POST',\n  url: 'https://api.pachca.com/api/shared/v1/messages',\n  headers: {\n    'Authorization': 'Bearer ' + $env.PACHCA_TOKEN + '',\n    'Content-Type': 'application/json'\n  },\n  body: {\n    message: {\n      entity_type: 'chat',\n      entity_id: Number(threadChatId),\n      content: `@${managerNickname} у @${employeeNickname} не пройден срез знаний. Тест закроется автоматически через неделю с оценкой 0%.`\n    }\n  }\n});\n\nreturn [{ json: { session_id: session.session_id, reminder_count: 3 } }];"
+        "jsCode": "const sheetData = $('Какое действие?').first().json;\nconst employee = $('Sheets: получить никнейм сотрудника').first().json;\nconst employeeNickname = employee.никнейм_сотрудника;\nconst managerNickname = employee.никнейм_руководителя;\nconst session = { ...sheetData };\n\n// Шаг 1: Отправляем сообщение сотруднику\nconst msgResponse = await this.helpers.httpRequest({\n  method: 'POST',\n  url: 'https://api.pachca.com/api/shared/v1/messages',\n  headers: {\n    'Authorization': 'Bearer ' + $env.PACHCA_TOKEN + '',\n    'Content-Type': 'application/json'\n  },\n  body: {\n    message: {\n      entity_type: 'user',\n      entity_id: Number(session.pachca_user_id),\n      content: `⚠️ Срез знаний всё ещё ждёт тебя. Обрати внимание: через неделю тест закроется автоматически с оценкой 0%.`\n    }\n  }\n});\n\nconst messageId = msgResponse.data.id;\n\n// Шаг 2: Создаём тред под сообщением\nconst threadResponse = await this.helpers.httpRequest({\n  method: 'POST',\n  url: `https://api.pachca.com/api/shared/v1/messages/${messageId}/thread`,\n  headers: {\n    'Authorization': 'Bearer ' + $env.PACHCA_TOKEN + '',\n    'Content-Type': 'application/json'\n  },\n  body: {}\n});\n\nconst threadChatId = threadResponse.data.chat_id;\n\n// Шаг 3: Пишем в тред с упоминанием руководителя\nawait this.helpers.httpRequest({\n  method: 'POST',\n  url: 'https://api.pachca.com/api/shared/v1/messages',\n  headers: {\n    'Authorization': 'Bearer ' + $env.PACHCA_TOKEN + '',\n    'Content-Type': 'application/json'\n  },\n  body: {\n    message: {\n      entity_type: 'chat',\n      entity_id: Number(threadChatId),\n      content: `@${managerNickname} у @${employeeNickname} не пройден срез знаний. Тест закроется автоматически через неделю с оценкой 0%.`\n    }\n  }\n});\n\nreturn [{ json: { session_id: session.session_id, reminder_count: 3 } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -491,15 +497,15 @@
       ],
       "id": "bc3fd35a-537d-479f-b1e8-f304772cd962",
       "name": "Обновление Sheets",
-      "credentials": {
-        "googleApi": {
-          "id": "CLtUZrMeBHsJ9IND",
-          "name": "Google Service Account account"
-        }
-      },
       "retryOnFail": true,
       "maxTries": 5,
-      "waitBetweenTries": 5000
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleApi": {
+          "id": "iOIcHY5XoWOTfdq1",
+          "name": "Google Service Account account"
+        }
+      }
     },
     {
       "parameters": {
@@ -700,15 +706,15 @@
       "id": "ac8183bb-5bed-44e3-8b9f-11c870293980",
       "name": "Обновление активных сессий",
       "alwaysOutputData": true,
-      "credentials": {
-        "googleApi": {
-          "id": "CLtUZrMeBHsJ9IND",
-          "name": "Google Service Account account"
-        }
-      },
       "retryOnFail": true,
       "maxTries": 5,
-      "waitBetweenTries": 5000
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleApi": {
+          "id": "iOIcHY5XoWOTfdq1",
+          "name": "Google Service Account account"
+        }
+      }
     },
     {
       "parameters": {
@@ -862,15 +868,15 @@
       ],
       "id": "03c38130-ab4d-4722-becd-04fb6a8c7407",
       "name": "Запись в итоги тестов",
-      "credentials": {
-        "googleApi": {
-          "id": "CLtUZrMeBHsJ9IND",
-          "name": "Google Service Account account"
-        }
-      },
       "retryOnFail": true,
       "maxTries": 5,
-      "waitBetweenTries": 5000
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleApi": {
+          "id": "iOIcHY5XoWOTfdq1",
+          "name": "Google Service Account account"
+        }
+      }
     },
     {
       "parameters": {
@@ -889,7 +895,7 @@
       "name": "Redis Обновление статуса",
       "credentials": {
         "redis": {
-          "id": "BCdcUQuZTVYaTRLM",
+          "id": "SrsBHXSwvsceprs8",
           "name": "Redis account"
         }
       }
@@ -910,7 +916,7 @@
       "name": "Redis: set сессию r1",
       "credentials": {
         "redis": {
-          "id": "BCdcUQuZTVYaTRLM",
+          "id": "SrsBHXSwvsceprs8",
           "name": "Redis account"
         }
       }
@@ -931,7 +937,7 @@
       "name": "Redis: set сессию r2",
       "credentials": {
         "redis": {
-          "id": "BCdcUQuZTVYaTRLM",
+          "id": "SrsBHXSwvsceprs8",
           "name": "Redis account"
         }
       }
@@ -970,15 +976,15 @@
       "id": "71f334a5-63ec-451a-be75-457656851989",
       "name": "Sheets: получить никнейм сотрудника",
       "alwaysOutputData": false,
-      "credentials": {
-        "googleApi": {
-          "id": "CLtUZrMeBHsJ9IND",
-          "name": "Google Service Account account"
-        }
-      },
       "retryOnFail": true,
       "maxTries": 5,
-      "waitBetweenTries": 5000
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleApi": {
+          "id": "iOIcHY5XoWOTfdq1",
+          "name": "Google Service Account account"
+        }
+      }
     },
     {
       "parameters": {
@@ -996,7 +1002,7 @@
       "name": "Redis: get полную сессию r1",
       "credentials": {
         "redis": {
-          "id": "BCdcUQuZTVYaTRLM",
+          "id": "SrsBHXSwvsceprs8",
           "name": "Redis account"
         }
       }
@@ -1017,7 +1023,7 @@
       "name": "Redis: get полную сессию r2",
       "credentials": {
         "redis": {
-          "id": "BCdcUQuZTVYaTRLM",
+          "id": "SrsBHXSwvsceprs8",
           "name": "Redis account"
         }
       }
@@ -1172,15 +1178,15 @@
       ],
       "id": "6ba06ccf-616c-408a-97ad-dc7caf211c8d",
       "name": "Обновление Вторые попытки (auto_close)",
-      "credentials": {
-        "googleApi": {
-          "id": "CLtUZrMeBHsJ9IND",
-          "name": "Google Service Account account"
-        }
-      },
       "retryOnFail": true,
       "maxTries": 5,
-      "waitBetweenTries": 5000
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleApi": {
+          "id": "iOIcHY5XoWOTfdq1",
+          "name": "Google Service Account account"
+        }
+      }
     },
     {
       "parameters": {
@@ -1197,13 +1203,12 @@
       "name": "Redis DELETE сессию",
       "credentials": {
         "redis": {
-          "id": "BCdcUQuZTVYaTRLM",
+          "id": "SrsBHXSwvsceprs8",
           "name": "Redis account"
         }
       }
     }
   ],
-  "pinData": {},
   "connections": {
     "Schedule Trigger": {
       "main": [
@@ -1478,16 +1483,49 @@
       ]
     }
   },
-  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "78817518-5f49-4dd7-a455-bcb0b6ab93a1",
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "4c63e90e523310677ea46f9435057f02f020287d0be29c922e7e3dadd6f51b0b"
   },
-  "id": "ZkVntGrMMgoCeOD1",
-  "tags": []
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "b0ae0cc5-3fe2-460a-bf86-39cd6a263686",
+  "activeVersionId": "b0ae0cc5-3fe2-460a-bf86-39cd6a263686",
+  "versionCounter": 7,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-06-18T13:58:42.708Z",
+      "createdAt": "2026-06-18T13:58:42.708Z",
+      "role": "workflow:owner",
+      "workflowId": "ZkVntGrMMgoCeOD1",
+      "projectId": "Fiq8H96iD3cYqbwj",
+      "project": {
+        "updatedAt": "2026-06-18T14:58:48.085Z",
+        "createdAt": "2026-06-18T13:56:57.485Z",
+        "id": "Fiq8H96iD3cYqbwj",
+        "name": "Ilya Klimenko <i.klimenko@docsinbox.ru>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "cc3b7aea-c692-4597-b610-33616c4fbc77"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": "Version b0ae0cc5",
+    "description": ""
+  }
 }
