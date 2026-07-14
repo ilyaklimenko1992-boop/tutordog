@@ -52,3 +52,17 @@ def test_unknown_role_denied():
     out = access.scope_payload(_data(), {"role": "weird", "login": "x", "audiences": []})
     assert out["employees"] == [] and out["questions_bank"] == []
     assert out["ui"]["empty_scope"] is True
+
+def test_manager_qbank_follows_scoped_employees_not_session_audiences():
+    out = access.scope_payload(_data(), {"role": "manager", "login": "a.balashov", "audiences": ["MOP", "SPRT"]})
+    assert {e["employee_id"] for e in out["employees"]} == {"E1", "E2"}
+    assert {q["question_id"] for q in out["questions_bank"]} == {"Q1"}
+
+def test_empty_employee_id_does_not_leak_into_manager_scope():
+    emp = EMP + [{"employee_id": "", "целевая_аудитория": "MOP", "никнейм_руководителя": "a.balashov"}]
+    data = _data()
+    data["employees"] = emp
+    data["sessions"] = data["sessions"] + [{"employee_id": ""}]
+    out = access.scope_payload(data, {"role": "manager", "login": "a.balashov", "audiences": ["MOP"]})
+    assert "" not in {e["employee_id"] for e in out["employees"]}
+    assert all(s.get("employee_id") != "" for s in out["sessions"])

@@ -34,3 +34,7 @@ def test_authenticate_returns_session_or_none():
     assert access.authenticate(acc, "I.Klimenko", "pw")["role"] == "admin"
     assert access.authenticate(acc, "i.klimenko", "bad") is None
     assert access.authenticate(acc, "nobody", "pw") is None
+
+def test_authenticate_unknown_login_uses_constant_time_dummy_hash():
+    assert access.authenticate({}, "nobody", "pw") is None
+    assert access._DUMMY_HASH

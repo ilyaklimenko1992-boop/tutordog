@@ -33,9 +33,13 @@ def parse_access(records):
     return out
 
 
+_DUMMY_HASH = bcrypt.hashpw(b"x", bcrypt.gensalt()).decode()
+
+
 def authenticate(access, username, password):
     entry = access.get((username or "").strip().lower())
     if not entry:
+        verify_password(password, _DUMMY_HASH)
         return None
     if not verify_password(password, entry["password_hash"]):
         return None
@@ -78,11 +82,12 @@ def allowed_employee_ids(employees, role, login, audiences):
         return None
     if role == "division_head":
         aud = set(audiences)
-        return {str(e.get(EMP_ID, "")) for e in employees if e.get(EMP_AUD) in aud}
+        return {str(e.get(EMP_ID, "")) for e in employees
+                if e.get(EMP_AUD) in aud and str(e.get(EMP_ID, "")).strip()}
     if role == "manager":
         lg = (login or "").lower()
         return {str(e.get(EMP_ID, "")) for e in employees
-                if (e.get(EMP_MGR) or "").lower() == lg}
+                if (e.get(EMP_MGR) or "").lower() == lg and str(e.get(EMP_ID, "")).strip()}
     return set()
 
 
@@ -98,15 +103,22 @@ def scope_payload(data, session):
             return list(rows)
         return [r for r in rows if str(r.get(EMP_ID, "")) in allowed]
 
+    scoped_employees = list(employees) if allowed is None else \
+        [e for e in employees if str(e.get(EMP_ID, "")) in allowed]
+
     if role == "admin":
         qbank = list(data.get("questions_bank", []))
-    else:
+    elif role == "manager":
+        aud = {e.get(EMP_AUD) for e in scoped_employees}
+        qbank = [q for q in data.get("questions_bank", []) if q.get(Q_AUD) in aud]
+    elif role == "division_head":
         aud = set(audiences)
         qbank = [q for q in data.get("questions_bank", []) if q.get(Q_AUD) in aud]
+    else:
+        qbank = []
 
     scoped = {
-        "employees": list(employees) if allowed is None else
-                     [e for e in employees if str(e.get(EMP_ID, "")) in allowed],
+        "employees": scoped_employees,
         "sessions": by_emp(data.get("sessions", [])),
         "results": by_emp(data.get("results", [])),
         "details": by_emp(data.get("details", [])),
