@@ -43,6 +43,8 @@ def authenticate(access, username, password):
         return None
     if not verify_password(password, entry["password_hash"]):
         return None
+    if entry["role"] not in KNOWN_ROLES:
+        return None
     return {"login": entry["login"], "role": entry["role"], "audiences": entry["audiences"]}
 
 

@@ -270,7 +270,6 @@ function hideField(id){
 }
 function applyRoleUI(ui){
   var notice=document.getElementById('role-empty-notice');
-  var main=document.querySelector('.content');
   if(ui.empty_scope){
     if(notice) notice.style.display='';
     Array.prototype.forEach.call(document.querySelectorAll('.view'),function(v){v.style.display='none';});
@@ -278,7 +277,7 @@ function applyRoleUI(ui){
     return;
   }
   if(notice) notice.style.display='none';
-  if(ui.show_audience_filter===false){ ['f-aud-ov','f-aud-emp','f-aud-prog'].forEach(hideField); }
+  if(ui.show_audience_filter===false){ ['f-aud-ov','f-aud-emp','f-aud-prog','f-aud-tests'].forEach(hideField); }
   if(ui.show_manager_filter===false){ ['f-mgr-ov','f-mgr-emp','f-mgr-prog'].forEach(hideField); }
 }
 

@@ -7,8 +7,14 @@ import main
 
 
 @pytest.fixture
-def client(monkeypatch):
+def client(monkeypatch, tmp_path):
     access.reset_access_cache()
+    index_page = tmp_path / "index.html"
+    login_page = tmp_path / "login.html"
+    index_page.write_text("<html>index</html>", encoding="utf-8")
+    login_page.write_text("<html>login</html>", encoding="utf-8")
+    monkeypatch.setattr(main, "INDEX_PAGE", str(index_page))
+    monkeypatch.setattr(main, "LOGIN_PAGE", str(login_page))
     h = bcrypt.hashpw(b"pw", bcrypt.gensalt(rounds=4)).decode()
     records = [
         {"name": "Adm", "login": "adm", "password": "", "password_hash": h,
@@ -57,3 +63,14 @@ def test_logout_clears_session(client):
     client.post("/login", data={"username": "adm", "password": "pw"})
     client.get("/logout")
     assert client.get("/api/data").status_code == 401
+
+def test_root_serves_index_after_login_without_opt_path(client):
+    client.post("/login", data={"username": "adm", "password": "pw"})
+    r = client.get("/", follow_redirects=True)
+    assert r.status_code == 200
+    assert "index" in r.text
+
+def test_login_page_served_without_opt_path(client):
+    r = client.get("/login")
+    assert r.status_code == 200
+    assert "login" in r.text

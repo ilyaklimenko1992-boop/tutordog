@@ -38,3 +38,19 @@ def test_authenticate_returns_session_or_none():
 def test_authenticate_unknown_login_uses_constant_time_dummy_hash():
     assert access.authenticate({}, "nobody", "pw") is None
     assert access._DUMMY_HASH
+
+def test_authenticate_rejects_unknown_role():
+    import bcrypt
+    h = bcrypt.hashpw(b"pw", bcrypt.gensalt(rounds=4)).decode()
+    acc = {"weirdo": {"login": "weirdo", "role": "weird",
+                       "audiences": [], "password_hash": h}}
+    assert access.authenticate(acc, "weirdo", "pw") is None
+
+def test_authenticate_accepts_known_roles():
+    import bcrypt
+    h = bcrypt.hashpw(b"pw", bcrypt.gensalt(rounds=4)).decode()
+    for role in access.KNOWN_ROLES:
+        acc = {"u": {"login": "u", "role": role, "audiences": [], "password_hash": h}}
+        session = access.authenticate(acc, "u", "pw")
+        assert session is not None
+        assert session["role"] == role
