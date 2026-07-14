@@ -74,3 +74,9 @@ def test_login_page_served_without_opt_path(client):
     r = client.get("/login")
     assert r.status_code == 200
     assert "login" in r.text
+
+
+def test_responses_have_no_store_header(client):
+    assert client.get("/login").headers.get("cache-control") == "no-store"
+    client.post("/login", data={"username": "adm", "password": "pw"})
+    assert client.get("/api/data").headers.get("cache-control") == "no-store"

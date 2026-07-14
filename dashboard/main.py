@@ -39,6 +39,13 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def no_store(request, call_next):
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 def is_authed(request):
     return request.session.get("auth") is True
 
