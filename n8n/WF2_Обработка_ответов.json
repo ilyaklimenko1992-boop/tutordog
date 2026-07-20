@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-20T14:31:26.000Z",
+  "updatedAt": "2026-07-20T14:52:21.000Z",
   "createdAt": "2026-06-18T13:58:42.690Z",
   "id": "vnBNEz203bhVCdDt",
   "name": "WF2 — Обработка ответов",
@@ -483,7 +483,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const question = $input.first().json;\nconst questionNumber = Number(question.current_question_index) + 1;\nconst total = question.total_questions;\n\nconst buttons = [\n  [{ text: `${question.вариант_A}`, data: 'A' }],\n  [{ text: `${question.вариант_B}`, data: 'B' }],\n  [{ text: `${question.вариант_C}`, data: 'C' }],\n  [{ text: `${question.вариант_D}`, data: 'D' }]\n];\n\nlet response;\ntry {\n  response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.pachca.com/api/shared/v1/messages',\n    headers: {\n      'Authorization': 'Bearer ' + $env.PACHCA_TOKEN + '',\n      'Content-Type': 'application/json'\n    },\n    body: {\n      message: {\n        entity_type: 'user',\n        entity_id: Number(question.pachca_user_id),\n        content: `📋 Вопрос ${questionNumber} из ${total}\\n\\n${question.текст_вопроса}\\n\\nВыбери один вариант ответа:`,\n        buttons: buttons\n      }\n    }\n  });\n} catch(e) {\n  return [{ json: { error: e.message } }];\n}\n\nreturn [{ json: { done: true, last_message_id: response.data.id, session_id: question.session_id } }];"
+        "jsCode": "const question = $input.first().json;\nconst questionNumber = Number(question.current_question_index) + 1;\nconst total = question.total_questions;\n\nconst buttons = [\n  [{ text: `${question.вариант_A}`, data: 'A' }],\n  [{ text: `${question.вариант_B}`, data: 'B' }],\n  [{ text: `${question.вариант_C}`, data: 'C' }],\n  [{ text: `${question.вариант_D}`, data: 'D' }]\n];\n\nlet response;\ntry {\n  response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.pachca.com/api/shared/v1/messages',\n    headers: {\n      'Authorization': 'Bearer ' + $env.PACHCA_TOKEN + '',\n      'Content-Type': 'application/json'\n    },\n    body: {\n      message: {\n        entity_type: 'user',\n        entity_id: Number(question.pachca_user_id),\n        content: `📋 Вопрос ${questionNumber} из ${total}\\n\\n${question.текст_вопроса}\\n\\nВыбери один вариант ответа:\n\n💡 Завис? Нажми «Начать» — вернёшься к этому вопросу.`,\n        buttons: buttons\n      }\n    }\n  });\n} catch(e) {\n  return [{ json: { error: e.message } }];\n}\n\nreturn [{ json: { done: true, last_message_id: response.data.id, session_id: question.session_id } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -496,7 +496,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const question = $('Текущий вопрос (старт)').first().json;\nconst questionNumber = Number(question.current_question_index) + 1;\nconst total = question.total_questions;\n\nconst buttons = [\n  [{ text: `${question.вариант_A}`, data: 'A' }],\n  [{ text: `${question.вариант_B}`, data: 'B' }],\n  [{ text: `${question.вариант_C}`, data: 'C' }],\n  [{ text: `${question.вариант_D}`, data: 'D' }]\n];\n\nlet response;\ntry {\n  response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.pachca.com/api/shared/v1/messages',\n    headers: {\n      'Authorization': 'Bearer ' + $env.PACHCA_TOKEN + '',\n      'Content-Type': 'application/json'\n    },\n    body: {\n      message: {\n        entity_type: 'user',\n        entity_id: Number(question.pachca_user_id),\n        content: `📋 Вопрос ${questionNumber} из ${total}\\n\\n${question.текст_вопроса}\\n\\nВыбери один вариант ответа:`,\n        buttons: buttons\n      }\n    }\n  });\n} catch(e) {\n  return [{ json: { error: e.message } }];\n}\n\nreturn [{ json: { done: true, last_message_id: response.data.id } }];"
+        "jsCode": "const question = $('Текущий вопрос (старт)').first().json;\nconst questionNumber = Number(question.current_question_index) + 1;\nconst total = question.total_questions;\n\nconst buttons = [\n  [{ text: `${question.вариант_A}`, data: 'A' }],\n  [{ text: `${question.вариант_B}`, data: 'B' }],\n  [{ text: `${question.вариант_C}`, data: 'C' }],\n  [{ text: `${question.вариант_D}`, data: 'D' }]\n];\n\nlet response;\ntry {\n  response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.pachca.com/api/shared/v1/messages',\n    headers: {\n      'Authorization': 'Bearer ' + $env.PACHCA_TOKEN + '',\n      'Content-Type': 'application/json'\n    },\n    body: {\n      message: {\n        entity_type: 'user',\n        entity_id: Number(question.pachca_user_id),\n        content: `📋 Вопрос ${questionNumber} из ${total}\\n\\n${question.текст_вопроса}\\n\\nВыбери один вариант ответа:\n\n💡 Завис? Нажми «Начать» — вернёшься к этому вопросу.`,\n        buttons: buttons\n      }\n    }\n  });\n} catch(e) {\n  return [{ json: { error: e.message } }];\n}\n\nreturn [{ json: { done: true, last_message_id: response.data.id } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2078,9 +2078,9 @@
   },
   "nodeGroups": [],
   "pinData": {},
-  "versionId": "a753949b-da84-4008-8198-9bf96692493a",
-  "activeVersionId": "a753949b-da84-4008-8198-9bf96692493a",
-  "versionCounter": 8,
+  "versionId": "7ad0aee6-49ae-4705-9f87-6b0a72acc435",
+  "activeVersionId": "7ad0aee6-49ae-4705-9f87-6b0a72acc435",
+  "versionCounter": 9,
   "triggerCount": 1,
   "sourceWorkflowId": null,
   "tags": [],
